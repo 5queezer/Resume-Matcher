@@ -2,18 +2,6 @@
 
 from unittest.mock import AsyncMock, patch
 
-import pytest
-from httpx import ASGITransport, AsyncClient
-
-from app.main import app
-
-
-@pytest.fixture
-def client():
-    """Async HTTP client for testing FastAPI endpoints."""
-    transport = ASGITransport(app=app)
-    return AsyncClient(transport=transport, base_url="http://test")
-
 
 class TestHealthEndpoint:
     """GET /api/v1/health"""
@@ -25,8 +13,7 @@ class TestHealthEndpoint:
             "provider": "openai",
             "model": "gpt-4",
         }
-        async with client:
-            resp = await client.get("/api/v1/health")
+        resp = await client.get("/api/v1/health")
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "healthy"
@@ -39,8 +26,7 @@ class TestHealthEndpoint:
             "model": "gpt-4",
             "error_code": "api_key_missing",
         }
-        async with client:
-            resp = await client.get("/api/v1/health")
+        resp = await client.get("/api/v1/health")
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "degraded"
@@ -61,8 +47,7 @@ class TestStatusEndpoint:
             "total_improvements": 0,
             "has_master_resume": True,
         }
-        async with client:
-            resp = await client.get("/api/v1/status")
+        resp = await client.get("/api/v1/status")
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "ready"
@@ -81,8 +66,7 @@ class TestStatusEndpoint:
             "total_improvements": 0,
             "has_master_resume": False,
         }
-        async with client:
-            resp = await client.get("/api/v1/status")
+        resp = await client.get("/api/v1/status")
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "setup_required"

@@ -3,6 +3,36 @@
 import copy
 
 import pytest
+from httpx import ASGITransport, AsyncClient
+
+from app.database import Database
+
+
+# ---------------------------------------------------------------------------
+# Database & HTTP client fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+async def test_db():
+    """Provide a clean in-memory SQLite database per test."""
+    test_database = Database("sqlite+aiosqlite://")
+    await test_database.init()
+    yield test_database
+    await test_database.close()
+
+
+@pytest.fixture
+async def client(test_db, monkeypatch):
+    """Async HTTP client with test database injected."""
+    import app.database as db_module
+    monkeypatch.setattr(db_module, "db", test_db)
+
+    from app.main import app
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        yield ac
 
 
 # ---------------------------------------------------------------------------
