@@ -138,7 +138,6 @@ class Settings(BaseSettings):
             return self.database_url
         db_file = self.data_dir / "database.db"
         return f"sqlite+aiosqlite:///{db_file}"
-
     log_llm: Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"] = "WARNING"
 
     @field_validator("llm_provider", mode="before")
