@@ -70,6 +70,7 @@ async def google_start(
             status_code=302,
         )
 
+
     nonce = secrets.token_urlsafe(32)
     packed = pack_state(
         {
