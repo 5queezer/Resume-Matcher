@@ -119,6 +119,7 @@ class TestResetDatabase:
 
     @patch("app.routers.config.db")
     async def test_reset_with_correct_token(self, mock_db, client):
+        mock_db.reset_database = AsyncMock()
         resp = await client.post("/api/v1/config/reset", json={
             "confirm": "RESET_ALL_DATA",
         })

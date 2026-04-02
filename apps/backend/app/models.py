@@ -11,6 +11,7 @@ class Base(DeclarativeBase):
     """Base class for all models."""
     type_annotation_map = {
         dict: JSON,
+        list: JSON,
     }
 
 
@@ -67,5 +68,5 @@ class Improvement(Base):
     original_resume_id: Mapped[str] = mapped_column(String(36), index=True)
     tailored_resume_id: Mapped[str] = mapped_column(String(36), index=True)
     job_id: Mapped[str] = mapped_column(String(36), index=True)
-    improvements: Mapped[dict | None] = mapped_column(nullable=True)
+    improvements: Mapped[list | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

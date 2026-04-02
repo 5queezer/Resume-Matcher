@@ -58,7 +58,7 @@ class TestRegenerateEndpoints(unittest.IsolatedAsyncioTestCase):
         )
 
         mock_db = MagicMock()
-        mock_db.get_resume.return_value = {"processed_data": {"workExperience": [], "additional": {}}}
+        mock_db.get_resume = AsyncMock(return_value={"processed_data": {"workExperience": [], "additional": {}}})
 
         exp_item = RegeneratedItem(
             item_id="exp_0",
@@ -124,7 +124,7 @@ class TestRegenerateEndpoints(unittest.IsolatedAsyncioTestCase):
         )
 
         mock_db = MagicMock()
-        mock_db.get_resume.return_value = {"processed_data": {"workExperience": [], "additional": {}}}
+        mock_db.get_resume = AsyncMock(return_value={"processed_data": {"workExperience": [], "additional": {}}})
 
         skills_item = RegeneratedItem(
             item_id="skills",
@@ -173,8 +173,8 @@ class TestRegenerateEndpoints(unittest.IsolatedAsyncioTestCase):
         }
 
         mock_db = MagicMock()
-        mock_db.get_resume.return_value = {"processed_data": processed_data}
-        mock_db.update_resume.return_value = None
+        mock_db.get_resume = AsyncMock(return_value={"processed_data": processed_data})
+        mock_db.update_resume = AsyncMock(return_value=None)
 
         regenerated_items = [
             RegeneratedItem(
@@ -211,8 +211,8 @@ class TestRegenerateEndpoints(unittest.IsolatedAsyncioTestCase):
         }
 
         mock_db = MagicMock()
-        mock_db.get_resume.return_value = {"processed_data": processed_data}
-        mock_db.update_resume.return_value = None
+        mock_db.get_resume = AsyncMock(return_value={"processed_data": processed_data})
+        mock_db.update_resume = AsyncMock(return_value=None)
 
         regenerated_items = [
             RegeneratedItem(
@@ -246,7 +246,7 @@ class TestRegenerateEndpoints(unittest.IsolatedAsyncioTestCase):
         }
 
         mock_db = MagicMock()
-        mock_db.get_resume.return_value = {"processed_data": processed_data}
+        mock_db.get_resume = AsyncMock(return_value={"processed_data": processed_data})
 
         regenerated_items = [
             RegeneratedItem(
@@ -281,10 +281,10 @@ class TestRegenerateEndpoints(unittest.IsolatedAsyncioTestCase):
 
         # additional.technicalSkills path
         mock_db_additional = MagicMock()
-        mock_db_additional.get_resume.return_value = {
+        mock_db_additional.get_resume = AsyncMock(return_value={
             "processed_data": {"additional": {"technicalSkills": ["Python"]}}
-        }
-        mock_db_additional.update_resume.return_value = None
+        })
+        mock_db_additional.update_resume = AsyncMock(return_value=None)
 
         with patch.object(enrichment_router, "db", mock_db_additional):
             result = await enrichment_router.apply_regenerated_items(resume_id, [base_item])
@@ -295,8 +295,8 @@ class TestRegenerateEndpoints(unittest.IsolatedAsyncioTestCase):
 
         # legacy technicalSkills path
         mock_db_legacy = MagicMock()
-        mock_db_legacy.get_resume.return_value = {"processed_data": {"technicalSkills": ["Python"]}}
-        mock_db_legacy.update_resume.return_value = None
+        mock_db_legacy.get_resume = AsyncMock(return_value={"processed_data": {"technicalSkills": ["Python"]}})
+        mock_db_legacy.update_resume = AsyncMock(return_value=None)
 
         with patch.object(enrichment_router, "db", mock_db_legacy):
             result = await enrichment_router.apply_regenerated_items(resume_id, [base_item])
@@ -309,7 +309,7 @@ class TestRegenerateEndpoints(unittest.IsolatedAsyncioTestCase):
         resume_id = "resume_1"
 
         mock_db = MagicMock()
-        mock_db.get_resume.return_value = {"processed_data": {"workExperience": []}}
+        mock_db.get_resume = AsyncMock(return_value={"processed_data": {"workExperience": []}})
 
         regenerated_items = [
             RegeneratedItem(
