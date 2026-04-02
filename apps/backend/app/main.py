@@ -33,19 +33,15 @@ _configure_application_logging()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
-    # Startup
     settings.data_dir.mkdir(parents=True, exist_ok=True)
-    # PDF renderer uses lazy initialization - will initialize on first use
-    # await init_pdf_renderer()
+    await db.init()
     yield
-    # Shutdown - wrap each cleanup in try-except to ensure all resources are released
     try:
         await close_pdf_renderer()
     except Exception as e:
         logger.error(f"Error closing PDF renderer: {e}")
-
     try:
-        db.close()
+        await db.close()
     except Exception as e:
         logger.error(f"Error closing database: {e}")
 
