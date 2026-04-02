@@ -5,7 +5,7 @@ import logging
 import sys
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 
 # Fix for Windows: Use ProactorEventLoop for subprocess support (Playwright)
 if sys.platform == "win32":
@@ -83,12 +83,12 @@ async def root() -> dict:
 
 
 @app.get("/.well-known/oauth-authorization-server")
-async def oauth_server_metadata() -> dict:
+async def oauth_server_metadata(request: Request) -> dict:
     """RFC 8414 OAuth 2.1 Authorization Server Metadata."""
-    base = settings.frontend_base_url.rstrip("/")
+    base = str(request.base_url).rstrip("/")
     api_base = f"{base}/api/v1"
     return {
-        "issuer": "resume-matcher",
+        "issuer": base,
         "authorization_endpoint": f"{api_base}/oauth/authorize",
         "token_endpoint": f"{api_base}/oauth/token",
         "revocation_endpoint": f"{api_base}/oauth/revoke",

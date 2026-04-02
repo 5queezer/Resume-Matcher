@@ -838,5 +838,18 @@
     "clearApiKeysDescription": "Are you sure you want to remove all API keys? You will need to re-enter them to use AI features.",
     "resetDatabase": "Reset Database and Clear All Data?",
     "resetDatabaseDescription": "This will permanently delete ALL resumes, job descriptions, and generated content. This action is irreversible."
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signingIn": "Signing in...",
+    "noAccount": "No account?",
+    "register": "Register",
+    "invalidCredentials": "Invalid email or password",
+    "loginFailed": "Login failed",
+    "loginFailedRetry": "Login failed. Please try again.",
+    "completingSignIn": "Completing sign in...",
+    "pkceError": "Unable to initialize secure login. Ensure you are using HTTPS or localhost."
   }
 }

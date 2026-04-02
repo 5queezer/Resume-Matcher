@@ -3,8 +3,10 @@
 import { Suspense, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { exchangeCode } from '@/lib/auth/oauth';
+import { useTranslations } from '@/lib/i18n/translations';
 
 function CallbackHandler() {
+  const { t } = useTranslations();
   const params = useSearchParams();
   const exchanged = useRef(false);
 
@@ -21,12 +23,12 @@ function CallbackHandler() {
       return;
     }
 
-    if (state && savedState && state !== savedState) {
+    if (!state || !savedState || state !== savedState) {
       window.location.href = '/login';
       return;
     }
 
-    exchangeCode(code)
+    exchangeCode(code, state)
       .then(() => {
         window.location.href = '/';
       })
@@ -37,7 +39,7 @@ function CallbackHandler() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#F0F0E8]">
-      <p className="font-sans text-sm text-gray-600">Completing sign in...</p>
+      <p className="font-sans text-sm text-gray-600">{t('auth.completingSignIn')}</p>
     </div>
   );
 }

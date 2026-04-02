@@ -3,6 +3,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 
 from app.auth.dependencies import get_current_user
 from app.auth.password import hash_password
@@ -17,16 +18,17 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/register", response_model=RegisterResponse, status_code=201)
 async def register(body: RegisterRequest) -> RegisterResponse:
     """Register a new user account."""
-    existing = await db.get_user_by_email(body.email)
-    if existing:
+    hashed = hash_password(body.password)
+    try:
+        user = await db.create_user(
+            email=body.email,
+            hashed_password=hashed,
+            display_name=body.display_name,
+        )
+    except (IntegrityError, Exception) as e:
+        logger.error("Registration failed: %s", e)
         raise HTTPException(status_code=409, detail="Email already registered")
 
-    hashed = hash_password(body.password)
-    user = await db.create_user(
-        email=body.email,
-        hashed_password=hashed,
-        display_name=body.display_name,
-    )
     return RegisterResponse(
         id=user["id"],
         email=user["email"],

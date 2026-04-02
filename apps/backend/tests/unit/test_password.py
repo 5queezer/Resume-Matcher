@@ -30,3 +30,6 @@ class TestPasswordHashing:
         h1 = hash_password("samepassword")
         h2 = hash_password("samepassword")
         assert h1 != h2  # salt should differ
+
+    def test_verify_corrupted_hash_returns_false(self) -> None:
+        assert verify_password("mypassword", "not-a-valid-hash") is False

@@ -92,9 +92,26 @@ class TestAuthorizationCodeOperations:
             code_challenge="challenge",
             expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
         )
-        await db.mark_authorization_code_used(code_hash)
+        result = await db.mark_authorization_code_used(code_hash)
+        assert result is True
         code = await db.get_authorization_code(code_hash)
         assert code["used_at"] is not None
+
+    async def test_mark_code_used_twice_returns_false(self, db: Database) -> None:
+        user = await db.create_user(email="twice@example.com", hashed_password="hash")
+        code_hash = _hash("twicecode")
+        await db.create_authorization_code(
+            code_hash=code_hash,
+            user_id=user["id"],
+            client_id="resume-matcher-web",
+            redirect_uri="http://localhost:3000/callback",
+            code_challenge="challenge",
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
+        )
+        first = await db.mark_authorization_code_used(code_hash)
+        assert first is True
+        second = await db.mark_authorization_code_used(code_hash)
+        assert second is False
 
     async def test_get_nonexistent_code(self, db: Database) -> None:
         code = await db.get_authorization_code(_hash("nonexistent"))

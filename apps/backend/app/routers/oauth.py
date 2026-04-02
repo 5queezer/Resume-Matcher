@@ -118,16 +118,15 @@ async def _handle_code_exchange(body: TokenRequest, response: Response) -> Token
     if expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Authorization code expired")
 
-    if stored["used_at"] is not None:
-        raise HTTPException(status_code=400, detail="Authorization code already used")
+    marked = await db.mark_authorization_code_used(code_hash)
+    if not marked:
+        raise HTTPException(status_code=400, detail="Authorization code already used or not found")
 
     if stored["client_id"] != body.client_id or stored["redirect_uri"] != body.redirect_uri:
         raise HTTPException(status_code=400, detail="Client/redirect mismatch")
 
     if not verify_code_challenge(body.code_verifier, stored["code_challenge"], "S256"):
         raise HTTPException(status_code=400, detail="PKCE verification failed")
-
-    await db.mark_authorization_code_used(code_hash)
 
     user = await db.get_user_by_id(stored["user_id"])
     if not user:
@@ -185,11 +184,13 @@ async def _issue_tokens(
         expires_at=datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
     )
 
+    is_secure = settings.frontend_origin.startswith("https")
+
     response.set_cookie(
         key="refresh_token",
         value=raw_refresh,
         httponly=True,
-        secure=False,  # False for local dev (localhost), True in production
+        secure=is_secure,
         samesite="lax",
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400,
         path="/api/v1/oauth/token",
@@ -198,7 +199,7 @@ async def _issue_tokens(
         key="has_session",
         value="1",
         httponly=False,
-        secure=False,
+        secure=is_secure,
         samesite="lax",
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400,
         path="/",

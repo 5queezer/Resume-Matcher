@@ -7,7 +7,7 @@ export function middleware(request: NextRequest) {
   const hasSession = request.cookies.get('has_session')?.value === '1';
 
   // Redirect authenticated users away from auth pages
-  if (hasSession && AUTH_ROUTES.some((r) => pathname.startsWith(r))) {
+  if (hasSession && AUTH_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'))) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 

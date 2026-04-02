@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { apiFetch } from '@/lib/api/client';
+import { useTranslations } from '@/lib/i18n/translations';
 
 interface LoginFormProps {
   codeChallenge: string;
@@ -9,6 +10,7 @@ interface LoginFormProps {
 }
 
 export function LoginForm({ codeChallenge, state }: LoginFormProps) {
+  const { t } = useTranslations();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -53,14 +55,14 @@ export function LoginForm({ codeChallenge, state }: LoginFormProps) {
 
       setLoading(false);
       if (resp.status === 401) {
-        setError('Invalid email or password');
+        setError(t('auth.invalidCredentials'));
       } else {
         const data = await resp.json().catch(() => ({}));
-        setError(data.detail || 'Login failed');
+        setError(data.detail || t('auth.loginFailed'));
       }
     } catch {
       setLoading(false);
-      setError('Login failed. Please try again.');
+      setError(t('auth.loginFailedRetry'));
     }
   };
 
@@ -73,7 +75,7 @@ export function LoginForm({ codeChallenge, state }: LoginFormProps) {
       )}
       <div>
         <label htmlFor="email" className="mb-1 block font-mono text-xs uppercase tracking-wider">
-          Email
+          {t('auth.email')}
         </label>
         <input
           id="email"
@@ -86,7 +88,7 @@ export function LoginForm({ codeChallenge, state }: LoginFormProps) {
       </div>
       <div>
         <label htmlFor="password" className="mb-1 block font-mono text-xs uppercase tracking-wider">
-          Password
+          {t('auth.password')}
         </label>
         <input
           id="password"
@@ -103,12 +105,12 @@ export function LoginForm({ codeChallenge, state }: LoginFormProps) {
         disabled={loading}
         className="w-full rounded-none border border-black bg-black px-4 py-2 font-sans text-sm text-white hover:bg-gray-900 disabled:opacity-50"
       >
-        {loading ? 'Signing in...' : 'Sign in'}
+        {loading ? t('auth.signingIn') : t('auth.signIn')}
       </button>
       <p className="text-center font-sans text-sm text-gray-600">
-        No account?{' '}
+        {t('auth.noAccount')}{' '}
         <a href="/register" className="text-[#1D4ED8] underline">
-          Register
+          {t('auth.register')}
         </a>
       </p>
     </form>

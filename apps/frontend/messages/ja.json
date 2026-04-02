@@ -838,5 +838,18 @@
     "clearApiKeysDescription": "すべてのAPIキーを削除してもよろしいですか？AI機能を使用するには再入力が必要になります。",
     "resetDatabase": "データベースをリセットして全データを消去しますか？",
     "resetDatabaseDescription": "すべての履歴書、求人内容、生成されたコンテンツが永久に削除されます。この操作は取り消せません。"
+  },
+  "auth": {
+    "email": "メールアドレス",
+    "password": "パスワード",
+    "signIn": "サインイン",
+    "signingIn": "サインイン中...",
+    "noAccount": "アカウントをお持ちでないですか？",
+    "register": "登録",
+    "invalidCredentials": "メールアドレスまたはパスワードが無効です",
+    "loginFailed": "ログインに失敗しました",
+    "loginFailedRetry": "ログインに失敗しました。もう一度お試しください。",
+    "completingSignIn": "サインインを完了しています...",
+    "pkceError": "安全なログインを初期化できませんでした。HTTPSまたはlocalhostを使用していることを確認してください。"
   }
 }

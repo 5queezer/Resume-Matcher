@@ -350,14 +350,17 @@ class Database:
             row = result.scalar_one_or_none()
             return self._auth_code_to_dict(row) if row else None
 
-    async def mark_authorization_code_used(self, code_hash: str) -> None:
+    async def mark_authorization_code_used(self, code_hash: str) -> bool:
+        """Atomically mark an authorization code as used. Returns True if successful."""
         async with self._session() as session:
-            await session.execute(
+            result = await session.execute(
                 update(AuthorizationCode)
                 .where(AuthorizationCode.code_hash == code_hash)
+                .where(AuthorizationCode.used_at.is_(None))
                 .values(used_at=datetime.now(timezone.utc))
             )
             await session.commit()
+            return result.rowcount > 0
 
     # -- Refresh token operations ---------------------------------------------
 

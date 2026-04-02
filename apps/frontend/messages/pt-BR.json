@@ -838,5 +838,18 @@
     "clearApiKeysDescription": "Tem certeza que deseja remover todas as chaves de API? Você precisará inseri-las novamente para usar recursos de IA.",
     "resetDatabase": "Redefinir Banco de Dados e Limpar Todos os Dados?",
     "resetDatabaseDescription": "Isso excluirá permanentemente TODOS os currículos, descrições de vagas e conteúdo gerado. Esta ação é irreversível."
+  },
+  "auth": {
+    "email": "E-mail",
+    "password": "Senha",
+    "signIn": "Entrar",
+    "signingIn": "Entrando...",
+    "noAccount": "Não tem conta?",
+    "register": "Registrar",
+    "invalidCredentials": "E-mail ou senha inválidos",
+    "loginFailed": "Falha no login",
+    "loginFailedRetry": "Falha no login. Tente novamente.",
+    "completingSignIn": "Concluindo login...",
+    "pkceError": "Não foi possível inicializar o login seguro. Certifique-se de usar HTTPS ou localhost."
   }
 }

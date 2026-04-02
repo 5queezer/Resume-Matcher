@@ -838,5 +838,18 @@
     "clearApiKeysDescription": "¿Estás seguro de que quieres eliminar todas las claves API? Deberás ingresarlas de nuevo para usar las funciones de IA.",
     "resetDatabase": "¿Restablecer Base de Datos y Borrar Todo?",
     "resetDatabaseDescription": "Esto eliminará permanentemente TODOS los currículums, descripciones de trabajo y contenido generado. Esta acción es irreversible."
+  },
+  "auth": {
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "signIn": "Iniciar sesión",
+    "signingIn": "Iniciando sesión...",
+    "noAccount": "¿No tienes cuenta?",
+    "register": "Registrarse",
+    "invalidCredentials": "Correo electrónico o contraseña no válidos",
+    "loginFailed": "Error de inicio de sesión",
+    "loginFailedRetry": "Error de inicio de sesión. Inténtelo de nuevo.",
+    "completingSignIn": "Completando inicio de sesión...",
+    "pkceError": "No se pudo inicializar el inicio de sesión seguro. Asegúrese de usar HTTPS o localhost."
   }
 }

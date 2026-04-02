@@ -23,10 +23,18 @@ export async function startLogin(): Promise<{
   return { codeChallenge, codeVerifier, state };
 }
 
-export async function exchangeCode(code: string): Promise<{
+export async function exchangeCode(
+  code: string,
+  state: string | null
+): Promise<{
   access_token: string;
   expires_in: number;
 }> {
+  const savedState = sessionStorage.getItem(STATE_KEY);
+  if (!state || !savedState || state !== savedState) {
+    throw new Error('OAuth state mismatch');
+  }
+
   const codeVerifier = sessionStorage.getItem(VERIFIER_KEY);
   if (!codeVerifier) throw new Error('Missing PKCE code_verifier');
 
