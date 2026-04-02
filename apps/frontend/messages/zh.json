@@ -850,6 +850,10 @@
     "loginFailed": "登录失败",
     "loginFailedRetry": "登录失败，请重试。",
     "completingSignIn": "正在完成登录...",
-    "pkceError": "无法初始化安全登录。请确保使用 HTTPS 或 localhost。"
+    "pkceError": "无法初始化安全登录。请确保使用 HTTPS 或 localhost。",
+    "signInWithGoogle": "使用 Google 登录",
+    "orContinueWith": "或继续使用",
+    "accountExistsPassword": "此电子邮件已存在账户。请使用密码登录。",
+    "googleFailed": "Google 登录失败。请重试。"
   }
 }

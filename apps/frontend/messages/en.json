@@ -850,6 +850,10 @@
     "loginFailed": "Login failed",
     "loginFailedRetry": "Login failed. Please try again.",
     "completingSignIn": "Completing sign in...",
-    "pkceError": "Unable to initialize secure login. Ensure you are using HTTPS or localhost."
+    "pkceError": "Unable to initialize secure login. Ensure you are using HTTPS or localhost.",
+    "signInWithGoogle": "Sign in with Google",
+    "orContinueWith": "or continue with",
+    "accountExistsPassword": "An account with this email already exists. Please sign in with your password.",
+    "googleFailed": "Google sign-in failed. Please try again."
   }
 }

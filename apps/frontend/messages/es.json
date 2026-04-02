@@ -850,6 +850,10 @@
     "loginFailed": "Error de inicio de sesión",
     "loginFailedRetry": "Error de inicio de sesión. Inténtelo de nuevo.",
     "completingSignIn": "Completando inicio de sesión...",
-    "pkceError": "No se pudo inicializar el inicio de sesión seguro. Asegúrese de usar HTTPS o localhost."
+    "pkceError": "No se pudo inicializar el inicio de sesión seguro. Asegúrese de usar HTTPS o localhost.",
+    "signInWithGoogle": "Iniciar sesion con Google",
+    "orContinueWith": "o continuar con",
+    "accountExistsPassword": "Ya existe una cuenta con este correo electronico. Por favor, inicia sesion con tu contrasena.",
+    "googleFailed": "Error al iniciar sesion con Google. Por favor, intentalo de nuevo."
   }
 }
