@@ -209,3 +209,18 @@ async def _issue_tokens(
         token_type="Bearer",
         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
+
+
+@router.post("/revoke")
+async def revoke(request: Request, response: Response) -> dict:
+    """Revoke the current refresh token and clear cookies."""
+    refresh_cookie = request.cookies.get("refresh_token")
+    if refresh_cookie:
+        token_hash = hashlib.sha256(refresh_cookie.encode()).hexdigest()
+        stored = await db.get_refresh_token(token_hash)
+        if stored:
+            await db.revoke_token_family(stored["family_id"])
+
+    response.delete_cookie("refresh_token", path="/api/v1/oauth/token")
+    response.delete_cookie("has_session", path="/")
+    return {"status": "ok"}

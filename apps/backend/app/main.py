@@ -73,12 +73,31 @@ app.include_router(enrichment_router, prefix="/api/v1")
 
 
 @app.get("/")
-async def root():
+async def root() -> dict:
     """Root endpoint."""
     return {
         "name": "Resume Matcher API",
         "version": __version__,
         "docs": "/docs",
+    }
+
+
+@app.get("/.well-known/oauth-authorization-server")
+async def oauth_server_metadata() -> dict:
+    """RFC 8414 OAuth 2.1 Authorization Server Metadata."""
+    base = settings.frontend_base_url.rstrip("/")
+    api_base = f"{base}/api/v1"
+    return {
+        "issuer": "resume-matcher",
+        "authorization_endpoint": f"{api_base}/oauth/authorize",
+        "token_endpoint": f"{api_base}/oauth/token",
+        "revocation_endpoint": f"{api_base}/oauth/revoke",
+        "registration_endpoint": None,
+        "response_types_supported": ["code"],
+        "grant_types_supported": ["authorization_code", "refresh_token"],
+        "code_challenge_methods_supported": ["S256"],
+        "token_endpoint_auth_methods_supported": ["none"],
+        "scopes_supported": ["openid", "profile", "email"],
     }
 
 

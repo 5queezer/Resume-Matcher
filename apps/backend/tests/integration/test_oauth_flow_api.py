@@ -157,3 +157,23 @@ class TestTokenExchange:
             "grant_type": "password",
         })
         assert resp.status_code == 400
+
+
+class TestRevoke:
+    async def test_revoke_endpoint(self, client) -> None:
+        # Just test it responds 200 (even without cookie)
+        resp = await client.post("/api/v1/oauth/revoke")
+        assert resp.status_code == 200
+
+
+class TestDiscovery:
+    async def test_well_known_oauth(self, client) -> None:
+        resp = await client.get("/.well-known/oauth-authorization-server")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "authorization_endpoint" in data
+        assert "token_endpoint" in data
+        assert "code_challenge_methods_supported" in data
+        assert "S256" in data["code_challenge_methods_supported"]
+        assert "response_types_supported" in data
+        assert "code" in data["response_types_supported"]
