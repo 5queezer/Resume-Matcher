@@ -85,3 +85,127 @@ async def authorize(body: AuthorizeRequest) -> Response:
         params["state"] = body.state
     redirect_url = f"{body.redirect_uri}?{urlencode(params)}"
     return RedirectResponse(url=redirect_url, status_code=303)
+
+
+@router.post("/token", response_model=TokenResponse)
+async def token(body: TokenRequest, request: Request, response: Response) -> TokenResponse:
+    """OAuth 2.1 token endpoint: code exchange and refresh."""
+    if body.grant_type == "authorization_code":
+        return await _handle_code_exchange(body, response)
+    elif body.grant_type == "refresh_token":
+        refresh_cookie = request.cookies.get("refresh_token")
+        if not refresh_cookie:
+            raise HTTPException(status_code=400, detail="Missing refresh token")
+        return await _handle_refresh(refresh_cookie, response)
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported grant_type")
+
+
+async def _handle_code_exchange(body: TokenRequest, response: Response) -> TokenResponse:
+    """Exchange authorization code + PKCE verifier for tokens."""
+    if not body.code or not body.code_verifier or not body.client_id or not body.redirect_uri:
+        raise HTTPException(status_code=400, detail="Missing required parameters")
+
+    code_hash = hashlib.sha256(body.code.encode()).hexdigest()
+    stored = await db.get_authorization_code(code_hash)
+
+    if not stored:
+        raise HTTPException(status_code=400, detail="Invalid authorization code")
+
+    expires_at = datetime.fromisoformat(stored["expires_at"])
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Authorization code expired")
+
+    if stored["used_at"] is not None:
+        raise HTTPException(status_code=400, detail="Authorization code already used")
+
+    if stored["client_id"] != body.client_id or stored["redirect_uri"] != body.redirect_uri:
+        raise HTTPException(status_code=400, detail="Client/redirect mismatch")
+
+    if not verify_code_challenge(body.code_verifier, stored["code_challenge"], "S256"):
+        raise HTTPException(status_code=400, detail="PKCE verification failed")
+
+    await db.mark_authorization_code_used(code_hash)
+
+    user = await db.get_user_by_id(stored["user_id"])
+    if not user:
+        raise HTTPException(status_code=400, detail="User not found")
+
+    return await _issue_tokens(user, response)
+
+
+async def _handle_refresh(refresh_token_value: str, response: Response) -> TokenResponse:
+    """Refresh: validate token, rotate, issue new tokens."""
+    token_hash = hashlib.sha256(refresh_token_value.encode()).hexdigest()
+    stored = await db.get_refresh_token(token_hash)
+
+    if not stored:
+        raise HTTPException(status_code=400, detail="Invalid refresh token")
+
+    if stored["revoked_at"] is not None:
+        await db.revoke_token_family(stored["family_id"])
+        logger.warning("Refresh token reuse detected for family %s", stored["family_id"])
+        raise HTTPException(status_code=400, detail="Token reuse detected")
+
+    expires_at = datetime.fromisoformat(stored["expires_at"])
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Refresh token expired")
+
+    await db.revoke_refresh_token(token_hash)
+
+    user = await db.get_user_by_id(stored["user_id"])
+    if not user:
+        raise HTTPException(status_code=400, detail="User not found")
+
+    return await _issue_tokens(user, response, family_id=stored["family_id"])
+
+
+async def _issue_tokens(
+    user: dict, response: Response, family_id: str | None = None,
+) -> TokenResponse:
+    """Create access token (JWT) and refresh token (cookie)."""
+    access_token = create_access_token(
+        user_id=user["id"],
+        email=user["email"],
+        secret=settings.effective_jwt_secret,
+    )
+
+    raw_refresh = secrets.token_urlsafe(32)
+    refresh_hash = hashlib.sha256(raw_refresh.encode()).hexdigest()
+    fid = family_id or secrets.token_urlsafe(16)
+
+    await db.create_refresh_token(
+        token_hash=refresh_hash,
+        user_id=user["id"],
+        family_id=fid,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+    )
+
+    response.set_cookie(
+        key="refresh_token",
+        value=raw_refresh,
+        httponly=True,
+        secure=False,  # False for local dev (localhost), True in production
+        samesite="lax",
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        path="/api/v1/oauth/token",
+    )
+    response.set_cookie(
+        key="has_session",
+        value="1",
+        httponly=False,
+        secure=False,
+        samesite="lax",
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        path="/",
+    )
+
+    return TokenResponse(
+        access_token=access_token,
+        token_type="Bearer",
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
