@@ -113,3 +113,63 @@ def validate_id_token_claims(
     if claims.get("nonce") != expected_nonce:
         raise ValueError("Nonce mismatch")
     return claims
+
+
+# ---------------------------------------------------------------------------
+# User resolution
+# ---------------------------------------------------------------------------
+
+class PasswordAccountExists(Exception):
+    """Raised when Google email matches an account with a password."""
+    pass
+
+
+async def resolve_google_user(claims: dict, db: "Database") -> dict:
+    """Resolve or create a user from Google ID token claims.
+
+    Four paths:
+    1. OAuth account already linked -> return existing user
+    2a. Verified email matches passwordless account -> auto-link
+    2b. Verified email matches password account -> raise PasswordAccountExists
+    3. No match -> create new user + oauth_account
+    """
+    from app.database import Database  # noqa: F811 — type hint only
+
+    google_sub = claims["sub"]
+    email = claims.get("email", "")
+    email_verified = claims.get("email_verified", False)
+    display_name = claims.get("name")
+
+    # Path 1: Already linked
+    oauth_account = await db.get_oauth_account("google", google_sub)
+    if oauth_account:
+        logger.info("google_auth.returning_existing user_id=%s", oauth_account["user_id"])
+        return await db.get_user_by_id(oauth_account["user_id"])
+
+    # Path 2: Email match (only if verified)
+    if email_verified and email:
+        existing_user = await db.get_user_by_email(email)
+        if existing_user:
+            if existing_user.get("hashed_password"):
+                logger.info("google_auth.denied_password_account email=%s", email)
+                raise PasswordAccountExists()
+            # Auto-link passwordless account
+            await db.create_oauth_account(
+                user_id=existing_user["id"],
+                provider="google",
+                provider_user_id=google_sub,
+                provider_email=email,
+            )
+            logger.info("google_auth.linked_existing user_id=%s", existing_user["id"])
+            return existing_user
+
+    # Path 3: New user
+    user = await db.create_user(email=email, display_name=display_name)
+    await db.create_oauth_account(
+        user_id=user["id"],
+        provider="google",
+        provider_user_id=google_sub,
+        provider_email=email,
+    )
+    logger.info("google_auth.created_new user_id=%s", user["id"])
+    return user
