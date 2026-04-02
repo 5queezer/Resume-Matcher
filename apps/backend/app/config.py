@@ -127,6 +127,18 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-5-nano-2025-08-07"
     llm_api_key: str = ""
     llm_api_base: str | None = None  # For Ollama or custom endpoints
+
+    # Database Configuration
+    database_url: str = ""
+
+    @property
+    def effective_database_url(self) -> str:
+        """Resolve DATABASE_URL with fallback to local SQLite."""
+        if self.database_url:
+            return self.database_url
+        db_file = self.data_dir / "database.db"
+        return f"sqlite+aiosqlite:///{db_file}"
+
     log_llm: Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"] = "WARNING"
 
     @field_validator("llm_provider", mode="before")
@@ -178,11 +190,6 @@ class Settings(BaseSettings):
 
     # Paths
     data_dir: Path = Path(__file__).parent.parent / "data"
-
-    @property
-    def db_path(self) -> Path:
-        """Path to TinyDB database file."""
-        return self.data_dir / "database.json"
 
     @property
     def config_path(self) -> Path:
