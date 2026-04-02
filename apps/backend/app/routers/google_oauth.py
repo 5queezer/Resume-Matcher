@@ -52,7 +52,7 @@ async def google_start(
     Packs the frontend's PKCE params into Google's state parameter
     with HMAC integrity protection.
     """
-    if not settings.google_client_id:
+    if not settings.google_client_id or not settings.google_client_secret:
         return RedirectResponse(
             f"{settings.frontend_origin}/login?error=google_not_configured",
             status_code=302,
@@ -61,6 +61,12 @@ async def google_start(
     if redirect_uri not in _allowed_redirect_uris():
         return RedirectResponse(
             f"{settings.frontend_origin}/login?error=invalid_redirect",
+            status_code=302,
+        )
+
+    if code_challenge_method != "S256":
+        return RedirectResponse(
+            f"{settings.frontend_origin}/login?error=google_failed",
             status_code=302,
         )
 

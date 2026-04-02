@@ -63,17 +63,20 @@ async def exchange_google_code(
     client_secret: str,
 ) -> dict:
     """Exchange Google authorization code for tokens (including id_token)."""
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(GOOGLE_TOKEN_URL, data={
-            "code": code,
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "redirect_uri": redirect_uri,
-            "grant_type": "authorization_code",
-        })
-        if resp.status_code != 200:
-            raise ValueError(f"Google token exchange failed: {resp.status_code}")
-        return resp.json()
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(GOOGLE_TOKEN_URL, data={
+                "code": code,
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "redirect_uri": redirect_uri,
+                "grant_type": "authorization_code",
+            })
+            if resp.status_code != 200:
+                raise ValueError(f"Google token exchange failed: {resp.status_code}")
+            return resp.json()
+    except httpx.HTTPError as e:
+        raise ValueError(f"Google token exchange failed: {e}") from e
 
 
 # ---------------------------------------------------------------------------
@@ -151,7 +154,7 @@ async def resolve_google_user(claims: dict, db: "Database") -> dict:
         existing_user = await db.get_user_by_email(email)
         if existing_user:
             if existing_user.get("hashed_password"):
-                logger.info("google_auth.denied_password_account email=%s", email)
+                logger.info("google_auth.denied_password_account user_id=%s", existing_user["id"])
                 raise PasswordAccountExists()
             # Auto-link passwordless account
             await db.create_oauth_account(
@@ -164,6 +167,8 @@ async def resolve_google_user(claims: dict, db: "Database") -> dict:
             return existing_user
 
     # Path 3: New user
+    if not email:
+        raise ValueError("Google account has no email address")
     user = await db.create_user(email=email, display_name=display_name)
     await db.create_oauth_account(
         user_id=user["id"],

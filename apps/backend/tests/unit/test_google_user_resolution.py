@@ -86,12 +86,11 @@ class TestResolveGoogleUser:
         assert user is not None
         assert user["id"] != existing["id"]
 
-    async def test_no_email_creates_new_account(self, db) -> None:
-        """Google claims with no email -> creates new account."""
+    async def test_no_email_raises_value_error(self, db) -> None:
+        """Google claims with no email -> raises ValueError."""
         claims = {"sub": "g-noemail", "email": "", "email_verified": False, "name": "No Email"}
-        user = await resolve_google_user(claims, db)
-        assert user is not None
-        assert user["display_name"] == "No Email"
+        with pytest.raises(ValueError, match="no email address"):
+            await resolve_google_user(claims, db)
 
     async def test_concurrent_link_handles_integrity_error(self, db) -> None:
         """If oauth_account was created between check and insert, handle gracefully."""

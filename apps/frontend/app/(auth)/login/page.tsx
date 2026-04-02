@@ -20,7 +20,9 @@ function LoginContent() {
   const errorMessage =
     errorParam === 'account_exists'
       ? t('auth.accountExistsPassword')
-      : errorParam === 'google_failed'
+      : errorParam === 'google_failed' ||
+          errorParam === 'invalid_redirect' ||
+          errorParam === 'google_not_configured'
         ? t('auth.googleFailed')
         : null;
 

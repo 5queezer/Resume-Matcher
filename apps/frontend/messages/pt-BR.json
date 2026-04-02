@@ -853,7 +853,7 @@
     "pkceError": "Não foi possível inicializar o login seguro. Certifique-se de usar HTTPS ou localhost.",
     "signInWithGoogle": "Entrar com Google",
     "orContinueWith": "ou continue com",
-    "accountExistsPassword": "Uma conta com este e-mail ja existe. Por favor, entre com sua senha.",
+    "accountExistsPassword": "Uma conta com este e-mail já existe. Por favor, entre com sua senha.",
     "googleFailed": "Falha ao entrar com Google. Por favor, tente novamente."
   }
 }

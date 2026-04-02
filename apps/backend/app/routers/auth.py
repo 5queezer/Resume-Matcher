@@ -55,6 +55,6 @@ async def me(user: dict = Depends(get_current_user)) -> UserResponse:
 async def list_providers() -> dict:
     """Return available authentication providers."""
     providers = ["credentials"]
-    if settings.google_client_id:
+    if settings.google_client_id and settings.google_client_secret:
         providers.append("google")
     return {"providers": providers}

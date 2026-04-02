@@ -72,6 +72,7 @@ class TestProvidersEndpoint:
 
     async def test_providers_with_google(self, client, monkeypatch) -> None:
         monkeypatch.setattr("app.config.settings.google_client_id", "test-google-id")
+        monkeypatch.setattr("app.config.settings.google_client_secret", "test-secret")
         resp = await client.get("/api/v1/auth/providers")
         assert resp.status_code == 200
         data = resp.json()
@@ -118,6 +119,7 @@ class TestGoogleStart:
 
     async def test_invalid_redirect_uri(self, client, monkeypatch) -> None:
         monkeypatch.setattr("app.config.settings.google_client_id", "test-google-id")
+        monkeypatch.setattr("app.config.settings.google_client_secret", "test-secret")
         resp = await client.get(
             "/api/v1/oauth/google/start",
             params={
@@ -132,6 +134,7 @@ class TestGoogleStart:
 
     async def test_missing_params(self, client, monkeypatch) -> None:
         monkeypatch.setattr("app.config.settings.google_client_id", "test-google-id")
+        monkeypatch.setattr("app.config.settings.google_client_secret", "test-secret")
         resp = await client.get(
             "/api/v1/oauth/google/start",
             follow_redirects=False,
@@ -171,6 +174,7 @@ class TestGoogleCallback:
 
     async def test_callback_google_error(self, client, monkeypatch) -> None:
         monkeypatch.setattr("app.config.settings.google_client_id", "test-google-id")
+        monkeypatch.setattr("app.config.settings.google_client_secret", "test-secret")
         resp = await client.get(
             "/api/v1/oauth/google/callback",
             params={"error": "access_denied"},
@@ -243,6 +247,7 @@ class TestGoogleCallback:
 
     async def test_callback_missing_code(self, client, monkeypatch) -> None:
         monkeypatch.setattr("app.config.settings.google_client_id", "test-google-id")
+        monkeypatch.setattr("app.config.settings.google_client_secret", "test-secret")
         resp = await client.get(
             "/api/v1/oauth/google/callback",
             params={"state": "some-state"},
