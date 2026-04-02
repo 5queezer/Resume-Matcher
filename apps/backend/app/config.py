@@ -157,6 +157,19 @@ class Settings(BaseSettings):
             raise ValueError(f"Invalid LOG_LLM: {value}. Allowed: {ALLOWED_LOG_LEVELS}")
         return value
 
+    # Authentication
+    jwt_secret_key: str = ""
+    frontend_origin: str = "http://localhost:3000"
+
+    @property
+    def effective_jwt_secret(self) -> str:
+        """JWT secret key -- required for auth endpoints."""
+        if not self.jwt_secret_key:
+            raise RuntimeError(
+                "JWT_SECRET_KEY is required. Set it in .env or environment."
+            )
+        return self.jwt_secret_key
+
     # Server Configuration
     host: str = "0.0.0.0"
     port: int = 8000

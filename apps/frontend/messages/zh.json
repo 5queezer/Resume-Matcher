@@ -838,5 +838,18 @@
     "clearApiKeysDescription": "您确定要删除所有 API 密钥吗？您需要重新输入它们才能使用 AI 功能。",
     "resetDatabase": "重置数据库并清除所有数据？",
     "resetDatabaseDescription": "这将永久删除所有简历、职位描述和生成的内容。此操作不可逆。"
+  },
+  "auth": {
+    "email": "电子邮件",
+    "password": "密码",
+    "signIn": "登录",
+    "signingIn": "登录中...",
+    "noAccount": "没有账户？",
+    "register": "注册",
+    "invalidCredentials": "电子邮件或密码无效",
+    "loginFailed": "登录失败",
+    "loginFailedRetry": "登录失败，请重试。",
+    "completingSignIn": "正在完成登录...",
+    "pkceError": "无法初始化安全登录。请确保使用 HTTPS 或 localhost。"
   }
 }

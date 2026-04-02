@@ -10,7 +10,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import settings
-from app.models import Base, Improvement, Job, Resume
+from app.models import AuthorizationCode, Base, Improvement, Job, RefreshToken, Resume, User
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +89,52 @@ class Database:
             "improvements": i.improvements,
             "created_at": i.created_at.isoformat() if i.created_at else None,
         }
+
+    @staticmethod
+    def _user_to_dict(u: User, include_password: bool = False) -> dict[str, Any]:
+        d: dict[str, Any] = {
+            "id": u.id,
+            "email": u.email,
+            "display_name": u.display_name,
+            "is_active": u.is_active,
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+            "updated_at": u.updated_at.isoformat() if u.updated_at else None,
+        }
+        if include_password:
+            d["hashed_password"] = u.hashed_password
+        return d
+
+    # -- User operations -------------------------------------------------------
+
+    async def create_user(
+        self,
+        email: str,
+        hashed_password: str,
+        display_name: str | None = None,
+    ) -> dict[str, Any]:
+        user = User(
+            id=str(uuid4()),
+            email=email,
+            hashed_password=hashed_password,
+            display_name=display_name,
+        )
+        async with self._session() as session:
+            session.add(user)
+            await session.commit()
+            await session.refresh(user)
+            return self._user_to_dict(user)
+
+    async def get_user_by_email(self, email: str) -> dict[str, Any] | None:
+        async with self._session() as session:
+            result = await session.execute(select(User).where(User.email == email))
+            row = result.scalar_one_or_none()
+            return self._user_to_dict(row, include_password=True) if row else None
+
+    async def get_user_by_id(self, user_id: str) -> dict[str, Any] | None:
+        async with self._session() as session:
+            result = await session.execute(select(User).where(User.id == user_id))
+            row = result.scalar_one_or_none()
+            return self._user_to_dict(row) if row else None
 
     # -- Resume operations ---------------------------------------------------
 
@@ -242,6 +288,128 @@ class Database:
             )
             row = result.scalar_one_or_none()
             return self._improvement_to_dict(row) if row else None
+
+    @staticmethod
+    def _auth_code_to_dict(c: AuthorizationCode) -> dict[str, Any]:
+        return {
+            "code_hash": c.code_hash,
+            "user_id": c.user_id,
+            "client_id": c.client_id,
+            "redirect_uri": c.redirect_uri,
+            "code_challenge": c.code_challenge,
+            "scope": c.scope,
+            "expires_at": c.expires_at.isoformat() if c.expires_at else None,
+            "used_at": c.used_at.isoformat() if c.used_at else None,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+        }
+
+    @staticmethod
+    def _refresh_token_to_dict(t: RefreshToken) -> dict[str, Any]:
+        return {
+            "id": t.id,
+            "token_hash": t.token_hash,
+            "user_id": t.user_id,
+            "family_id": t.family_id,
+            "expires_at": t.expires_at.isoformat() if t.expires_at else None,
+            "revoked_at": t.revoked_at.isoformat() if t.revoked_at else None,
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+        }
+
+    # -- Authorization code operations ----------------------------------------
+
+    async def create_authorization_code(
+        self,
+        code_hash: str,
+        user_id: str,
+        client_id: str,
+        redirect_uri: str,
+        code_challenge: str,
+        expires_at: datetime,
+        scope: str | None = None,
+    ) -> dict[str, Any]:
+        code = AuthorizationCode(
+            code_hash=code_hash,
+            user_id=user_id,
+            client_id=client_id,
+            redirect_uri=redirect_uri,
+            code_challenge=code_challenge,
+            scope=scope,
+            expires_at=expires_at,
+        )
+        async with self._session() as session:
+            session.add(code)
+            await session.commit()
+            await session.refresh(code)
+            return self._auth_code_to_dict(code)
+
+    async def get_authorization_code(self, code_hash: str) -> dict[str, Any] | None:
+        async with self._session() as session:
+            result = await session.execute(
+                select(AuthorizationCode).where(AuthorizationCode.code_hash == code_hash)
+            )
+            row = result.scalar_one_or_none()
+            return self._auth_code_to_dict(row) if row else None
+
+    async def mark_authorization_code_used(self, code_hash: str) -> bool:
+        """Atomically mark an authorization code as used. Returns True if successful."""
+        async with self._session() as session:
+            result = await session.execute(
+                update(AuthorizationCode)
+                .where(AuthorizationCode.code_hash == code_hash)
+                .where(AuthorizationCode.used_at.is_(None))
+                .values(used_at=datetime.now(timezone.utc))
+            )
+            await session.commit()
+            return result.rowcount > 0
+
+    # -- Refresh token operations ---------------------------------------------
+
+    async def create_refresh_token(
+        self,
+        token_hash: str,
+        user_id: str,
+        family_id: str,
+        expires_at: datetime,
+    ) -> dict[str, Any]:
+        token = RefreshToken(
+            id=str(uuid4()),
+            token_hash=token_hash,
+            user_id=user_id,
+            family_id=family_id,
+            expires_at=expires_at,
+        )
+        async with self._session() as session:
+            session.add(token)
+            await session.commit()
+            await session.refresh(token)
+            return self._refresh_token_to_dict(token)
+
+    async def get_refresh_token(self, token_hash: str) -> dict[str, Any] | None:
+        async with self._session() as session:
+            result = await session.execute(
+                select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+            )
+            row = result.scalar_one_or_none()
+            return self._refresh_token_to_dict(row) if row else None
+
+    async def revoke_refresh_token(self, token_hash: str) -> None:
+        async with self._session() as session:
+            await session.execute(
+                update(RefreshToken)
+                .where(RefreshToken.token_hash == token_hash)
+                .values(revoked_at=datetime.now(timezone.utc))
+            )
+            await session.commit()
+
+    async def revoke_token_family(self, family_id: str) -> None:
+        async with self._session() as session:
+            await session.execute(
+                update(RefreshToken)
+                .where(RefreshToken.family_id == family_id)
+                .where(RefreshToken.revoked_at.is_(None))
+                .values(revoked_at=datetime.now(timezone.utc))
+            )
+            await session.commit()
 
     # -- Stats & admin -------------------------------------------------------
 
