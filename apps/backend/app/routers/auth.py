@@ -25,9 +25,11 @@ async def register(body: RegisterRequest) -> RegisterResponse:
             hashed_password=hashed,
             display_name=body.display_name,
         )
-    except (IntegrityError, Exception) as e:
-        logger.error("Registration failed: %s", e)
+    except IntegrityError:
         raise HTTPException(status_code=409, detail="Email already registered")
+    except Exception as e:
+        logger.error("Registration failed: %s", e)
+        raise HTTPException(status_code=500, detail="Registration failed. Please try again.")
 
     return RegisterResponse(
         id=user["id"],

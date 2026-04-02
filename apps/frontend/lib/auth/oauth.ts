@@ -81,8 +81,16 @@ export async function silentRefresh(): Promise<{
 }
 
 export async function logout(): Promise<void> {
-  await apiFetch('/oauth/revoke', {
-    method: 'POST',
-    credentials: 'include',
-  });
+  try {
+    const resp = await apiFetch('/oauth/revoke', {
+      method: 'POST',
+      credentials: 'include',
+    });
+    if (!resp.ok) {
+      console.warn('Revoke request failed:', resp.status);
+    }
+  } catch {
+    // Network error during revoke -- proceed with local cleanup anyway
+    console.warn('Revoke request failed');
+  }
 }
