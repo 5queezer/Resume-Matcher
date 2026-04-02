@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.auth.dependencies import get_current_user
 from app.auth.password import hash_password
+from app.config import settings
 from app.database import db
 from app.schemas.auth import RegisterRequest, RegisterResponse, UserResponse
 
@@ -48,3 +49,12 @@ async def me(user: dict = Depends(get_current_user)) -> UserResponse:
         is_active=user["is_active"],
         created_at=user.get("created_at"),
     )
+
+
+@router.get("/providers")
+async def list_providers() -> dict:
+    """Return available authentication providers."""
+    providers = ["credentials"]
+    if settings.google_client_id:
+        providers.append("google")
+    return {"providers": providers}
