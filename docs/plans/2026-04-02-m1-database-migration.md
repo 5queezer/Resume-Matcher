@@ -12,7 +12,7 @@
 
 ## File Map
 
-```
+```text
 apps/backend/
 ├── app/
 │   ├── config.py              # MODIFY: add DATABASE_URL setting
@@ -24,7 +24,7 @@ apps/backend/
 ├── alembic/                   # CREATE: migrations directory
 │   ├── env.py
 │   └── versions/
-│       └── 001_initial.py
+│       └── 74770b4ed9d5_initial_schema.py
 ├── pyproject.toml             # MODIFY: swap deps
 └── tests/
     └── unit/
@@ -1037,7 +1037,7 @@ git commit -m "feat(m1): update test fixtures for async SQLAlchemy database"
 - Create: `apps/backend/alembic.ini`
 - Create: `apps/backend/alembic/env.py`
 - Create: `apps/backend/alembic/script.py.mako`
-- Create: `apps/backend/alembic/versions/001_initial_schema.py`
+- Create: `apps/backend/alembic/versions/<revid>_initial_schema.py`
 
 **Step 1: Initialize Alembic**
 
@@ -1167,7 +1167,7 @@ The `db_path` property in `config.py` (lines 182-185) should have been removed i
 
 Add to the project `.gitignore`:
 
-```
+```gitignore
 apps/backend/data/database.db
 ```
 
