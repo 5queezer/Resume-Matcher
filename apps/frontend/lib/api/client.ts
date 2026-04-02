@@ -118,3 +118,28 @@ export async function apiDelete(endpoint: string): Promise<Response> {
 export function getUploadUrl(): string {
   return `${API_BASE}/resumes/upload`;
 }
+
+/**
+ * Token getter function -- set by AuthProvider.
+ */
+let _getToken: (() => Promise<string | null>) | null = null;
+
+export function setTokenGetter(fn: () => Promise<string | null>): void {
+  _getToken = fn;
+}
+
+/**
+ * Authenticated fetch: injects Authorization header if token available.
+ */
+export async function authFetch(
+  endpoint: string,
+  options?: RequestInit,
+  timeoutMs?: number
+): Promise<Response> {
+  const token = _getToken ? await _getToken() : null;
+  const headers = new Headers(options?.headers);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  return apiFetch(endpoint, { ...options, headers, credentials: 'include' }, timeoutMs);
+}
