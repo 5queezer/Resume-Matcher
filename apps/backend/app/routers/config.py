@@ -489,5 +489,5 @@ async def reset_database_endpoint(request: ResetDatabaseRequest) -> dict:
             status_code=400,
             detail="Confirmation required. Pass confirm=RESET_ALL_DATA in request body.",
         )
-    db.reset_database()
+    await db.reset_database()
     return {"message": "Database and all data have been reset successfully"}
