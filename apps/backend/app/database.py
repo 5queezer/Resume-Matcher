@@ -10,7 +10,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import settings
-from app.models import Base, Improvement, Job, Resume
+from app.models import Base, Improvement, Job, Resume, User
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +89,52 @@ class Database:
             "improvements": i.improvements,
             "created_at": i.created_at.isoformat() if i.created_at else None,
         }
+
+    @staticmethod
+    def _user_to_dict(u: User, include_password: bool = False) -> dict[str, Any]:
+        d: dict[str, Any] = {
+            "id": u.id,
+            "email": u.email,
+            "display_name": u.display_name,
+            "is_active": u.is_active,
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+            "updated_at": u.updated_at.isoformat() if u.updated_at else None,
+        }
+        if include_password:
+            d["hashed_password"] = u.hashed_password
+        return d
+
+    # -- User operations -------------------------------------------------------
+
+    async def create_user(
+        self,
+        email: str,
+        hashed_password: str,
+        display_name: str | None = None,
+    ) -> dict[str, Any]:
+        user = User(
+            id=str(uuid4()),
+            email=email,
+            hashed_password=hashed_password,
+            display_name=display_name,
+        )
+        async with self._session() as session:
+            session.add(user)
+            await session.commit()
+            await session.refresh(user)
+            return self._user_to_dict(user)
+
+    async def get_user_by_email(self, email: str) -> dict[str, Any] | None:
+        async with self._session() as session:
+            result = await session.execute(select(User).where(User.email == email))
+            row = result.scalar_one_or_none()
+            return self._user_to_dict(row, include_password=True) if row else None
+
+    async def get_user_by_id(self, user_id: str) -> dict[str, Any] | None:
+        async with self._session() as session:
+            result = await session.execute(select(User).where(User.id == user_id))
+            row = result.scalar_one_or_none()
+            return self._user_to_dict(row) if row else None
 
     # -- Resume operations ---------------------------------------------------
 
