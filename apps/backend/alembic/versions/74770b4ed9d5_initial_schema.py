@@ -1,8 +1,8 @@
 """initial schema
 
-Revision ID: 5deb2c252d98
+Revision ID: 74770b4ed9d5
 Revises: 
-Create Date: 2026-04-02 17:07:20.054739
+Create Date: 2026-04-02 18:49:42.832985
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '5deb2c252d98'
+revision: str = '74770b4ed9d5'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -32,36 +32,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
-    op.create_table('improvements',
-    sa.Column('request_id', sa.String(length=36), nullable=False),
-    sa.Column('user_id', sa.String(length=36), nullable=True),
-    sa.Column('original_resume_id', sa.String(length=36), nullable=False),
-    sa.Column('tailored_resume_id', sa.String(length=36), nullable=False),
-    sa.Column('job_id', sa.String(length=36), nullable=False),
-    sa.Column('improvements', sa.JSON(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('request_id')
-    )
-    op.create_index(op.f('ix_improvements_job_id'), 'improvements', ['job_id'], unique=False)
-    op.create_index(op.f('ix_improvements_original_resume_id'), 'improvements', ['original_resume_id'], unique=False)
-    op.create_index(op.f('ix_improvements_tailored_resume_id'), 'improvements', ['tailored_resume_id'], unique=False)
-    op.create_index(op.f('ix_improvements_user_id'), 'improvements', ['user_id'], unique=False)
-    op.create_table('jobs',
-    sa.Column('job_id', sa.String(length=36), nullable=False),
-    sa.Column('user_id', sa.String(length=36), nullable=True),
-    sa.Column('content', sa.Text(), nullable=False),
-    sa.Column('resume_id', sa.String(length=36), nullable=True),
-    sa.Column('job_keywords', sa.JSON(), nullable=True),
-    sa.Column('job_keywords_hash', sa.String(length=64), nullable=True),
-    sa.Column('preview_hash', sa.String(length=64), nullable=True),
-    sa.Column('preview_prompt_id', sa.String(length=50), nullable=True),
-    sa.Column('preview_hashes', sa.JSON(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('job_id')
-    )
-    op.create_index(op.f('ix_jobs_user_id'), 'jobs', ['user_id'], unique=False)
     op.create_table('resumes',
     sa.Column('resume_id', sa.String(length=36), nullable=False),
     sa.Column('user_id', sa.String(length=36), nullable=True),
@@ -78,27 +48,66 @@ def upgrade() -> None:
     sa.Column('original_markdown', sa.Text(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.ForeignKeyConstraint(['parent_id'], ['resumes.resume_id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('resume_id')
     )
     op.create_index(op.f('ix_resumes_parent_id'), 'resumes', ['parent_id'], unique=False)
     op.create_index(op.f('ix_resumes_user_id'), 'resumes', ['user_id'], unique=False)
+    op.create_table('jobs',
+    sa.Column('job_id', sa.String(length=36), nullable=False),
+    sa.Column('user_id', sa.String(length=36), nullable=True),
+    sa.Column('content', sa.Text(), nullable=False),
+    sa.Column('resume_id', sa.String(length=36), nullable=True),
+    sa.Column('job_keywords', sa.JSON(), nullable=True),
+    sa.Column('job_keywords_hash', sa.String(length=64), nullable=True),
+    sa.Column('preview_hash', sa.String(length=64), nullable=True),
+    sa.Column('preview_prompt_id', sa.String(length=50), nullable=True),
+    sa.Column('preview_hashes', sa.JSON(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.ForeignKeyConstraint(['resume_id'], ['resumes.resume_id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('job_id')
+    )
+    op.create_index(op.f('ix_jobs_resume_id'), 'jobs', ['resume_id'], unique=False)
+    op.create_index(op.f('ix_jobs_user_id'), 'jobs', ['user_id'], unique=False)
+    op.create_table('improvements',
+    sa.Column('request_id', sa.String(length=36), nullable=False),
+    sa.Column('user_id', sa.String(length=36), nullable=True),
+    sa.Column('original_resume_id', sa.String(length=36), nullable=False),
+    sa.Column('tailored_resume_id', sa.String(length=36), nullable=False),
+    sa.Column('job_id', sa.String(length=36), nullable=False),
+    sa.Column('improvements', sa.JSON(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.ForeignKeyConstraint(['job_id'], ['jobs.job_id'], ),
+    sa.ForeignKeyConstraint(['original_resume_id'], ['resumes.resume_id'], ),
+    sa.ForeignKeyConstraint(['tailored_resume_id'], ['resumes.resume_id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('request_id')
+    )
+    op.create_index(op.f('ix_improvements_job_id'), 'improvements', ['job_id'], unique=False)
+    op.create_index(op.f('ix_improvements_original_resume_id'), 'improvements', ['original_resume_id'], unique=False)
+    op.create_index(op.f('ix_improvements_tailored_resume_id'), 'improvements', ['tailored_resume_id'], unique=False)
+    op.create_index(op.f('ix_improvements_user_id'), 'improvements', ['user_id'], unique=False)
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
-    op.drop_index(op.f('ix_resumes_user_id'), table_name='resumes')
-    op.drop_index(op.f('ix_resumes_parent_id'), table_name='resumes')
-    op.drop_table('resumes')
-    op.drop_index(op.f('ix_jobs_user_id'), table_name='jobs')
-    op.drop_table('jobs')
     op.drop_index(op.f('ix_improvements_user_id'), table_name='improvements')
     op.drop_index(op.f('ix_improvements_tailored_resume_id'), table_name='improvements')
     op.drop_index(op.f('ix_improvements_original_resume_id'), table_name='improvements')
     op.drop_index(op.f('ix_improvements_job_id'), table_name='improvements')
     op.drop_table('improvements')
+    op.drop_index(op.f('ix_jobs_user_id'), table_name='jobs')
+    op.drop_index(op.f('ix_jobs_resume_id'), table_name='jobs')
+    op.drop_table('jobs')
+    op.drop_index(op.f('ix_resumes_user_id'), table_name='resumes')
+    op.drop_index(op.f('ix_resumes_parent_id'), table_name='resumes')
+    op.drop_table('resumes')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
     # ### end Alembic commands ###
