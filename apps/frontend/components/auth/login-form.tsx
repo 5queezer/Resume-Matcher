@@ -85,10 +85,7 @@ export function LoginForm({ codeChallenge, state }: LoginFormProps) {
         />
       </div>
       <div>
-        <label
-          htmlFor="password"
-          className="mb-1 block font-mono text-xs uppercase tracking-wider"
-        >
+        <label htmlFor="password" className="mb-1 block font-mono text-xs uppercase tracking-wider">
           Password
         </label>
         <input
