@@ -4,6 +4,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.auth.dependencies import get_current_user
 from app.auth.password import hash_password
 from app.database import db
 from app.schemas.auth import RegisterRequest, RegisterResponse, UserResponse
@@ -30,4 +31,16 @@ async def register(body: RegisterRequest) -> RegisterResponse:
         id=user["id"],
         email=user["email"],
         display_name=user["display_name"],
+    )
+
+
+@router.get("/me", response_model=UserResponse)
+async def me(user: dict = Depends(get_current_user)) -> UserResponse:
+    """Get the current authenticated user's profile."""
+    return UserResponse(
+        id=user["id"],
+        email=user["email"],
+        display_name=user.get("display_name"),
+        is_active=user["is_active"],
+        created_at=user.get("created_at"),
     )
