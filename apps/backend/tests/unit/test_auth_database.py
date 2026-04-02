@@ -1,7 +1,14 @@
 """Tests for auth-related database operations."""
 
+import hashlib
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from app.database import Database
+
+
+def _hash(value: str) -> str:
+    return hashlib.sha256(value.encode()).hexdigest()
 
 
 @pytest.fixture
@@ -54,3 +61,92 @@ class TestUserOperations:
         await db.create_user(email="dup@example.com", hashed_password="hash")
         with pytest.raises(Exception):
             await db.create_user(email="dup@example.com", hashed_password="hash2")
+
+
+class TestAuthorizationCodeOperations:
+    async def test_create_and_get_auth_code(self, db: Database) -> None:
+        user = await db.create_user(email="code@example.com", hashed_password="hash")
+        code_hash = _hash("authcode123")
+        await db.create_authorization_code(
+            code_hash=code_hash,
+            user_id=user["id"],
+            client_id="resume-matcher-web",
+            redirect_uri="http://localhost:3000/callback",
+            code_challenge="E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
+        )
+        code = await db.get_authorization_code(code_hash)
+        assert code is not None
+        assert code["user_id"] == user["id"]
+        assert code["client_id"] == "resume-matcher-web"
+        assert code["used_at"] is None
+
+    async def test_mark_code_used(self, db: Database) -> None:
+        user = await db.create_user(email="used@example.com", hashed_password="hash")
+        code_hash = _hash("usedcode")
+        await db.create_authorization_code(
+            code_hash=code_hash,
+            user_id=user["id"],
+            client_id="resume-matcher-web",
+            redirect_uri="http://localhost:3000/callback",
+            code_challenge="challenge",
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
+        )
+        await db.mark_authorization_code_used(code_hash)
+        code = await db.get_authorization_code(code_hash)
+        assert code["used_at"] is not None
+
+    async def test_get_nonexistent_code(self, db: Database) -> None:
+        code = await db.get_authorization_code(_hash("nonexistent"))
+        assert code is None
+
+
+class TestRefreshTokenOperations:
+    async def test_create_and_get_refresh_token(self, db: Database) -> None:
+        user = await db.create_user(email="refresh@example.com", hashed_password="hash")
+        token_hash = _hash("refreshtoken123")
+        token = await db.create_refresh_token(
+            token_hash=token_hash,
+            user_id=user["id"],
+            family_id="family-001",
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+        )
+        assert token["user_id"] == user["id"]
+        assert token["family_id"] == "family-001"
+        assert token["revoked_at"] is None
+
+        fetched = await db.get_refresh_token(token_hash)
+        assert fetched is not None
+        assert fetched["family_id"] == "family-001"
+
+    async def test_revoke_refresh_token(self, db: Database) -> None:
+        user = await db.create_user(email="revoke@example.com", hashed_password="hash")
+        token_hash = _hash("torevoke")
+        await db.create_refresh_token(
+            token_hash=token_hash,
+            user_id=user["id"],
+            family_id="family-002",
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+        )
+        await db.revoke_refresh_token(token_hash)
+        token = await db.get_refresh_token(token_hash)
+        assert token["revoked_at"] is not None
+
+    async def test_revoke_token_family(self, db: Database) -> None:
+        user = await db.create_user(email="family@example.com", hashed_password="hash")
+        family_id = "family-003"
+        for i in range(3):
+            await db.create_refresh_token(
+                token_hash=_hash(f"familytoken{i}"),
+                user_id=user["id"],
+                family_id=family_id,
+                expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+            )
+        await db.revoke_token_family(family_id)
+        for i in range(3):
+            token = await db.get_refresh_token(_hash(f"familytoken{i}"))
+            assert token["revoked_at"] is not None
+
+    async def test_get_nonexistent_refresh_token(self, db: Database) -> None:
+        token = await db.get_refresh_token(_hash("nonexistent"))
+        assert token is None
