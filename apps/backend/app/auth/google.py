@@ -116,6 +116,7 @@ def validate_id_token_claims(
     if claims.get("nonce") != expected_nonce:
         raise ValueError("Nonce mismatch")
     return claims
+<<<<<<< HEAD
 
 
 # ---------------------------------------------------------------------------
