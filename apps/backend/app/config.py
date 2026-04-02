@@ -161,6 +161,10 @@ class Settings(BaseSettings):
     jwt_secret_key: str = ""
     frontend_origin: str = "http://localhost:3000"
 
+    # Google OAuth
+    google_client_id: str = ""
+    google_client_secret: str = ""
+
     @property
     def effective_jwt_secret(self) -> str:
         """JWT secret key -- required for auth endpoints."""

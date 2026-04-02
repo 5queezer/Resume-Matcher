@@ -109,7 +109,7 @@ class Database:
     async def create_user(
         self,
         email: str,
-        hashed_password: str,
+        hashed_password: str | None = None,
         display_name: str | None = None,
     ) -> dict[str, Any]:
         user = User(
