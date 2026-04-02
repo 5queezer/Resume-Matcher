@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class Database:
-    """Async database wrapper preserving the TinyDB-era interface."""
+    """Async database wrapper with dict-based interface for routers."""
 
     _master_resume_lock = asyncio.Lock()
 

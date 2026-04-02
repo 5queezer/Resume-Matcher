@@ -603,7 +603,7 @@ async def get_resume(resume_id: str = Query(...)) -> ResumeFetchResponse:
 
     # Build response
     raw_resume = RawResume(
-        id=None,  # TinyDB doesn't have numeric IDs like SQL
+        id=None,
         content=resume["content"],
         content_type=resume["content_type"],
         created_at=resume["created_at"],
