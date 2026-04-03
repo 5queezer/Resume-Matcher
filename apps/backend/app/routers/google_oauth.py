@@ -150,6 +150,9 @@ async def google_callback(
             f"{frontend_login}?error=account_exists",
             status_code=302,
         )
+    except ValueError as e:
+        logger.warning("Google user resolution failed: %s", e)
+        return RedirectResponse(f"{frontend_login}?error=google_failed", status_code=302)
 
     our_code = secrets.token_urlsafe(32)
     code_hash = hashlib.sha256(our_code.encode()).hexdigest()
