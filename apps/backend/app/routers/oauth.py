@@ -170,7 +170,6 @@ async def _issue_tokens(
     access_token = create_access_token(
         user_id=user["id"],
         email=user["email"],
-        secret=settings.effective_jwt_secret,
     )
 
     raw_refresh = secrets.token_urlsafe(32)

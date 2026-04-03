@@ -6,6 +6,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.auth.jwt import create_access_token
+from app.auth.keys import load_rsa_keys, reset_keys
 from app.database import Database
 
 
@@ -31,7 +32,7 @@ def jwt_secret(monkeypatch) -> str:
 
 
 @pytest.fixture
-async def client(test_db, jwt_secret, monkeypatch):
+async def client(test_db, jwt_secret, rsa_keys, monkeypatch):
     """Async HTTP client with test database and JWT secret injected.
 
     Patches the ``db`` attribute in every module that imports it so that
@@ -236,22 +237,37 @@ def sample_changes():
 
 
 # ---------------------------------------------------------------------------
+# RSA key fixture for RS256 JWT signing
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def rsa_keys():
+    """Generate and load test RSA keys for JWT signing."""
+    from joserfc.jwk import RSAKey
+    reset_keys()
+    key = RSAKey.generate_key(2048)
+    load_rsa_keys(pem_data=key.as_pem(private=True).decode("utf-8"))
+    yield
+    reset_keys()
+
+
+# ---------------------------------------------------------------------------
 # Auth fixtures — user creation + JWT tokens
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-async def auth_user_a(test_db, jwt_secret):
+async def auth_user_a(test_db, rsa_keys):
     """Create user A and return (user_dict, bearer_token)."""
     user = await test_db.create_user(email="alice@test.com", hashed_password="hash_a", display_name="Alice")
-    token = create_access_token(user_id=user["id"], email=user["email"], secret=jwt_secret)
+    token = create_access_token(user_id=user["id"], email=user["email"])
     return user, token
 
 
 @pytest.fixture
-async def auth_user_b(test_db, jwt_secret):
+async def auth_user_b(test_db, rsa_keys):
     """Create user B and return (user_dict, bearer_token)."""
     user = await test_db.create_user(email="bob@test.com", hashed_password="hash_b", display_name="Bob")
-    token = create_access_token(user_id=user["id"], email=user["email"], secret=jwt_secret)
+    token = create_access_token(user_id=user["id"], email=user["email"])
     return user, token
 
 

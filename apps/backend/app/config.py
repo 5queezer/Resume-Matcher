@@ -165,6 +165,17 @@ class Settings(BaseSettings):
     google_client_id: str = ""
     google_client_secret: str = ""
 
+    # RSA Key Configuration (for RS256 JWT signing)
+    rsa_private_key_pem: str = ""
+    rsa_key_file: str = ""
+
+    @property
+    def effective_rsa_key_file(self) -> Path:
+        """Path to RSA private key file."""
+        if self.rsa_key_file:
+            return Path(self.rsa_key_file)
+        return self.data_dir / "jwt_rsa_private.pem"
+
     @property
     def effective_jwt_secret(self) -> str:
         """JWT secret key -- required for auth endpoints."""
