@@ -1,4 +1,4 @@
-import { apiFetch } from '@/lib/api/client';
+import { apiFetch, API_BASE } from '@/lib/api/client';
 import { generatePKCE } from './pkce';
 
 const CLIENT_ID = 'resume-matcher-web';
@@ -21,6 +21,21 @@ export async function startLogin(): Promise<{
   sessionStorage.setItem(VERIFIER_KEY, codeVerifier);
   sessionStorage.setItem(STATE_KEY, state);
   return { codeChallenge, codeVerifier, state };
+}
+
+export async function startGoogleLogin(): Promise<void> {
+  const { codeVerifier, codeChallenge } = await generatePKCE();
+  const state = crypto.randomUUID();
+  sessionStorage.setItem(VERIFIER_KEY, codeVerifier);
+  sessionStorage.setItem(STATE_KEY, state);
+
+  const params = new URLSearchParams({
+    state,
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256',
+    redirect_uri: getRedirectUri(),
+  });
+  window.location.href = `${API_BASE}/oauth/google/start?${params}`;
 }
 
 export async function exchangeCode(

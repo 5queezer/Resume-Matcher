@@ -33,6 +33,7 @@ async def client(test_db, monkeypatch):
     import app.auth.dependencies as auth_deps_mod
     import app.routers.auth as auth_mod
     import app.routers.oauth as oauth_mod
+    import app.routers.google_oauth as google_oauth_mod
     import app.routers.resumes as resumes_mod
     import app.routers.jobs as jobs_mod
     import app.routers.health as health_mod
@@ -40,7 +41,7 @@ async def client(test_db, monkeypatch):
     import app.routers.enrichment as enrichment_mod
     import app.main as main_mod
 
-    for mod in (db_module, auth_deps_mod, auth_mod, oauth_mod, resumes_mod, jobs_mod, health_mod, config_mod, enrichment_mod, main_mod):
+    for mod in (db_module, auth_deps_mod, auth_mod, oauth_mod, google_oauth_mod, resumes_mod, jobs_mod, health_mod, config_mod, enrichment_mod, main_mod):
         if hasattr(mod, "db"):
             monkeypatch.setattr(mod, "db", test_db)
 

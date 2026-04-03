@@ -10,7 +10,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import settings
-from app.models import AuthorizationCode, Base, Improvement, Job, RefreshToken, Resume, User
+from app.models import AuthorizationCode, Base, Improvement, Job, OAuthAccount, RefreshToken, Resume, User
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +109,7 @@ class Database:
     async def create_user(
         self,
         email: str,
-        hashed_password: str,
+        hashed_password: str | None = None,
         display_name: str | None = None,
     ) -> dict[str, Any]:
         user = User(
@@ -314,6 +314,64 @@ class Database:
             "revoked_at": t.revoked_at.isoformat() if t.revoked_at else None,
             "created_at": t.created_at.isoformat() if t.created_at else None,
         }
+
+    @staticmethod
+    def _oauth_account_to_dict(o: OAuthAccount) -> dict[str, Any]:
+        return {
+            "id": o.id,
+            "user_id": o.user_id,
+            "provider": o.provider,
+            "provider_user_id": o.provider_user_id,
+            "provider_email": o.provider_email,
+            "created_at": o.created_at.isoformat() if o.created_at else None,
+        }
+
+    # -- OAuth account operations -----------------------------------------------
+
+    async def create_oauth_account(
+        self,
+        user_id: str,
+        provider: str,
+        provider_user_id: str,
+        provider_email: str | None = None,
+    ) -> dict[str, Any]:
+        account = OAuthAccount(
+            id=str(uuid4()),
+            user_id=user_id,
+            provider=provider,
+            provider_user_id=provider_user_id,
+            provider_email=provider_email,
+        )
+        async with self._session() as session:
+            session.add(account)
+            await session.commit()
+            await session.refresh(account)
+            return self._oauth_account_to_dict(account)
+
+    async def get_oauth_account(
+        self,
+        provider: str,
+        provider_user_id: str,
+    ) -> dict[str, Any] | None:
+        async with self._session() as session:
+            result = await session.execute(
+                select(OAuthAccount).where(
+                    OAuthAccount.provider == provider,
+                    OAuthAccount.provider_user_id == provider_user_id,
+                )
+            )
+            row = result.scalar_one_or_none()
+            return self._oauth_account_to_dict(row) if row else None
+
+    async def get_oauth_accounts_by_user(
+        self,
+        user_id: str,
+    ) -> list[dict[str, Any]]:
+        async with self._session() as session:
+            result = await session.execute(
+                select(OAuthAccount).where(OAuthAccount.user_id == user_id)
+            )
+            return [self._oauth_account_to_dict(o) for o in result.scalars().all()]
 
     # -- Authorization code operations ----------------------------------------
 

@@ -850,6 +850,10 @@
     "loginFailed": "ログインに失敗しました",
     "loginFailedRetry": "ログインに失敗しました。もう一度お試しください。",
     "completingSignIn": "サインインを完了しています...",
-    "pkceError": "安全なログインを初期化できませんでした。HTTPSまたはlocalhostを使用していることを確認してください。"
+    "pkceError": "安全なログインを初期化できませんでした。HTTPSまたはlocalhostを使用していることを確認してください。",
+    "signInWithGoogle": "Google でサインイン",
+    "orContinueWith": "または以下で続行",
+    "accountExistsPassword": "このメールアドレスのアカウントは既に存在します。パスワードでサインインしてください。",
+    "googleFailed": "Google サインインに失敗しました。もう一度お試しください。"
   }
 }
