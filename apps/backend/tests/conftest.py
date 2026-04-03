@@ -5,6 +5,8 @@ import copy
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app.auth.jwt import create_access_token
+from app.config import settings
 from app.database import Database
 
 
@@ -226,3 +228,37 @@ def sample_changes():
             reason="Already in good order, no change needed",
         ),
     ]
+
+
+# ---------------------------------------------------------------------------
+# Auth fixtures — user creation + JWT tokens
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+async def auth_user_a(test_db):
+    """Create user A and return (user_dict, bearer_token)."""
+    user = await test_db.create_user(email="alice@test.com", hashed_password="hash_a", display_name="Alice")
+    token = create_access_token(user_id=user["id"], email=user["email"], secret=settings.effective_jwt_secret)
+    return user, token
+
+
+@pytest.fixture
+async def auth_user_b(test_db):
+    """Create user B and return (user_dict, bearer_token)."""
+    user = await test_db.create_user(email="bob@test.com", hashed_password="hash_b", display_name="Bob")
+    token = create_access_token(user_id=user["id"], email=user["email"], secret=settings.effective_jwt_secret)
+    return user, token
+
+
+@pytest.fixture
+def auth_headers_a(auth_user_a):
+    """Authorization headers for user A."""
+    _, token = auth_user_a
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def auth_headers_b(auth_user_b):
+    """Authorization headers for user B."""
+    _, token = auth_user_b
+    return {"Authorization": f"Bearer {token}"}

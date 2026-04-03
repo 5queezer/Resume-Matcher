@@ -7,7 +7,9 @@ import logging
 import re
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.auth.dependencies import get_current_user
 
 from app.config_cache import get_content_language
 from app.database import db
@@ -85,14 +87,14 @@ def _extract_item_from_resume(processed_data: dict, item_id: str) -> dict:
 
 
 @router.post("/analyze/{resume_id}", response_model=AnalysisResponse)
-async def analyze_resume(resume_id: str) -> AnalysisResponse:
+async def analyze_resume(resume_id: str, user: dict = Depends(get_current_user)) -> AnalysisResponse:
     """Analyze a resume to identify items that need enrichment.
 
     Uses AI to examine Experience and Projects sections for weak,
     vague, or incomplete descriptions and generates clarifying questions.
     """
     # Fetch resume
-    resume = await db.get_resume(resume_id)
+    resume = await db.get_resume(resume_id, user["id"])
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
 
@@ -155,14 +157,14 @@ async def analyze_resume(resume_id: str) -> AnalysisResponse:
 
 
 @router.post("/enhance", response_model=EnhancementPreview)
-async def generate_enhancements(request: EnhanceRequest) -> EnhancementPreview:
+async def generate_enhancements(request: EnhanceRequest, user: dict = Depends(get_current_user)) -> EnhancementPreview:
     """Generate enhanced descriptions from user answers.
 
     Takes the answers to clarifying questions and uses AI to generate
     improved description bullets for each item.
     """
     # Fetch resume
-    resume = await db.get_resume(request.resume_id)
+    resume = await db.get_resume(request.resume_id, user["id"])
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
 
@@ -297,7 +299,7 @@ async def generate_enhancements(request: EnhanceRequest) -> EnhancementPreview:
 
 @router.post("/apply/{resume_id}")
 async def apply_enhancements(
-    resume_id: str, request: ApplyEnhancementsRequest
+    resume_id: str, request: ApplyEnhancementsRequest, user: dict = Depends(get_current_user)
 ) -> dict:
     """Apply enhancements to the master resume.
 
@@ -305,7 +307,7 @@ async def apply_enhancements(
     the enhanced descriptions.
     """
     # Fetch resume
-    resume = await db.get_resume(resume_id)
+    resume = await db.get_resume(resume_id, user["id"])
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
 
@@ -360,6 +362,7 @@ async def apply_enhancements(
     try:
         await db.update_resume(
             resume_id,
+            user["id"],
             {
                 "content": updated_content,
                 "processed_data": updated_data,
@@ -455,14 +458,14 @@ async def _regenerate_skills(
 
 
 @router.post("/regenerate", response_model=RegenerateResponse)
-async def regenerate_items(request: RegenerateRequest) -> RegenerateResponse:
+async def regenerate_items(request: RegenerateRequest, user: dict = Depends(get_current_user)) -> RegenerateResponse:
     """Regenerate selected resume items based on user feedback.
 
     Takes selected items (experience, projects, skills) and a user instruction,
     then uses AI to rewrite the content addressing the user's concerns.
     """
     # Validate resume exists
-    resume = await db.get_resume(request.resume_id)
+    resume = await db.get_resume(request.resume_id, user["id"])
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
 
@@ -516,7 +519,7 @@ async def regenerate_items(request: RegenerateRequest) -> RegenerateResponse:
 
 @router.post("/apply-regenerated/{resume_id}")
 async def apply_regenerated_items(
-    resume_id: str, regenerated_items: list[RegeneratedItem]
+    resume_id: str, regenerated_items: list[RegeneratedItem], user: dict = Depends(get_current_user)
 ) -> dict:
     """Apply regenerated items to the master resume.
 
@@ -524,7 +527,7 @@ async def apply_regenerated_items(
     the regenerated descriptions.
     """
     # Fetch resume
-    resume = await db.get_resume(resume_id)
+    resume = await db.get_resume(resume_id, user["id"])
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
 
@@ -761,6 +764,7 @@ async def apply_regenerated_items(
     try:
         await db.update_resume(
             resume_id,
+            user["id"],
             {
                 "content": updated_content,
                 "processed_data": updated_data,
