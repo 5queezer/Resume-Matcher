@@ -1,6 +1,8 @@
 """Health check and status endpoints."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from app.auth.dependencies import get_current_user
 
 from app.database import db
 from app.llm import check_llm_health, get_llm_config
@@ -21,7 +23,7 @@ async def health_check() -> HealthResponse:
 
 
 @router.get("/status", response_model=StatusResponse)
-async def get_status() -> StatusResponse:
+async def get_status(user: dict = Depends(get_current_user)) -> StatusResponse:
     """Get comprehensive application status.
 
     Returns:
@@ -31,7 +33,7 @@ async def get_status() -> StatusResponse:
     """
     config = get_llm_config()
     llm_status = await check_llm_health(config)
-    db_stats = await db.get_stats()
+    db_stats = await db.get_stats(user["id"])
 
     return StatusResponse(
         status="ready" if llm_status["healthy"] and db_stats["has_master_resume"] else "setup_required",
