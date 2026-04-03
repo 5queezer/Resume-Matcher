@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
-from app.auth.keys import load_rsa_keys
+from app.auth.keys import get_jwks, load_rsa_keys
 from app.config import settings
 from app.database import db
 from app.pdf import close_pdf_renderer, init_pdf_renderer
@@ -98,12 +98,31 @@ async def oauth_server_metadata(request: Request) -> dict:
         "authorization_endpoint": f"{api_base}/oauth/authorize",
         "token_endpoint": f"{api_base}/oauth/token",
         "revocation_endpoint": f"{api_base}/oauth/revoke",
-        "registration_endpoint": None,
+        "registration_endpoint": f"{api_base}/oauth/register",
+        "jwks_uri": f"{base}/.well-known/jwks.json",
         "response_types_supported": ["code"],
         "grant_types_supported": ["authorization_code", "refresh_token"],
         "code_challenge_methods_supported": ["S256"],
         "token_endpoint_auth_methods_supported": ["none"],
         "scopes_supported": ["openid", "profile", "email"],
+    }
+
+
+@app.get("/.well-known/jwks.json")
+async def jwks_endpoint() -> dict:
+    """RFC 7517 JSON Web Key Set — public key for token verification."""
+    return get_jwks()
+
+
+@app.get("/.well-known/oauth-protected-resource")
+async def protected_resource_metadata(request: Request) -> dict:
+    """RFC 9728 OAuth 2.0 Protected Resource Metadata."""
+    base = str(request.base_url).rstrip("/")
+    return {
+        "resource": base,
+        "authorization_servers": [base],
+        "bearer_methods_supported": ["header"],
+        "resource_name": "Resume Matcher",
     }
 
 

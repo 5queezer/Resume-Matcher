@@ -54,3 +54,23 @@ class ErrorResponse(BaseModel):
     """RFC 6750 error response."""
     error: str
     error_description: str | None = None
+
+
+class ClientRegistrationRequest(BaseModel):
+    """RFC 7591 Dynamic Client Registration request."""
+    redirect_uris: list[str] = Field(min_length=1)
+    client_name: str | None = None
+    token_endpoint_auth_method: str = "none"
+    grant_types: list[str] = Field(default=["authorization_code"])
+    response_types: list[str] = Field(default=["code"])
+
+
+class ClientRegistrationResponse(BaseModel):
+    """RFC 7591 Dynamic Client Registration response."""
+    client_id: str
+    client_name: str | None
+    redirect_uris: list[str]
+    grant_types: list[str]
+    response_types: list[str]
+    token_endpoint_auth_method: str
+    client_id_issued_at: int

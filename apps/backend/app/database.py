@@ -10,7 +10,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import settings
-from app.models import AuthorizationCode, Base, Improvement, Job, OAuthAccount, RefreshToken, Resume, User
+from app.models import AuthorizationCode, Base, Improvement, Job, OAuthAccount, OAuthClient, RefreshToken, Resume, User
 
 logger = logging.getLogger(__name__)
 
@@ -348,6 +348,52 @@ class Database:
             "provider_email": o.provider_email,
             "created_at": o.created_at.isoformat() if o.created_at else None,
         }
+
+    # -- OAuth client operations -----------------------------------------------
+
+    @staticmethod
+    def _oauth_client_to_dict(c: OAuthClient) -> dict[str, Any]:
+        return {
+            "client_id": c.client_id,
+            "client_name": c.client_name,
+            "redirect_uris": c.redirect_uris or [],
+            "grant_types": c.grant_types or ["authorization_code"],
+            "response_types": c.response_types or ["code"],
+            "token_endpoint_auth_method": c.token_endpoint_auth_method or "none",
+            "is_active": c.is_active,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+        }
+
+    async def create_oauth_client(
+        self,
+        client_name: str | None = None,
+        redirect_uris: list[str] | None = None,
+        grant_types: list[str] | None = None,
+        response_types: list[str] | None = None,
+        token_endpoint_auth_method: str = "none",
+        client_id: str | None = None,
+    ) -> dict[str, Any]:
+        client = OAuthClient(
+            client_id=client_id or str(uuid4()),
+            client_name=client_name,
+            redirect_uris=redirect_uris or [],
+            grant_types=grant_types or ["authorization_code"],
+            response_types=response_types or ["code"],
+            token_endpoint_auth_method=token_endpoint_auth_method,
+        )
+        async with self._session() as session:
+            session.add(client)
+            await session.commit()
+            await session.refresh(client)
+            return self._oauth_client_to_dict(client)
+
+    async def get_oauth_client(self, client_id: str) -> dict[str, Any] | None:
+        async with self._session() as session:
+            result = await session.execute(
+                select(OAuthClient).where(OAuthClient.client_id == client_id)
+            )
+            row = result.scalar_one_or_none()
+            return self._oauth_client_to_dict(row) if row else None
 
     # -- OAuth account operations -----------------------------------------------
 

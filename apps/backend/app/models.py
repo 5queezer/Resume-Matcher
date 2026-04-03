@@ -110,3 +110,16 @@ class OAuthAccount(Base):
     __table_args__ = (
         UniqueConstraint("provider", "provider_user_id", name="uq_oauth_provider_user"),
     )
+
+
+class OAuthClient(Base):
+    """Dynamically registered OAuth clients (RFC 7591)."""
+    __tablename__ = "oauth_clients"
+    client_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    client_name: Mapped[str | None] = mapped_column(String(255))
+    redirect_uris: Mapped[list] = mapped_column(JSON, default=list)
+    grant_types: Mapped[list] = mapped_column(JSON, default=lambda: ["authorization_code"])
+    response_types: Mapped[list] = mapped_column(JSON, default=lambda: ["code"])
+    token_endpoint_auth_method: Mapped[str] = mapped_column(String(50), default="none")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -21,7 +21,7 @@ from app.auth.password import verify_password
 from app.auth.pkce import verify_code_challenge
 from app.config import settings
 from app.database import db
-from app.schemas.auth import AuthorizeRequest, TokenRequest, TokenResponse
+from app.schemas.auth import AuthorizeRequest, ClientRegistrationRequest, ClientRegistrationResponse, TokenRequest, TokenResponse
 
 logger = logging.getLogger(__name__)
 
@@ -37,18 +37,27 @@ def _allowed_redirect_uris() -> list[str]:
     return uris
 
 
-def _validate_client(client_id: str, redirect_uri: str) -> None:
-    """Validate client_id and redirect_uri against known clients."""
-    if client_id != FIRST_PARTY_CLIENT_ID:
+async def _validate_client(client_id: str, redirect_uri: str) -> None:
+    """Validate client_id and redirect_uri against registered clients."""
+    oauth_client = await db.get_oauth_client(client_id)
+    if not oauth_client or not oauth_client["is_active"]:
         raise HTTPException(status_code=400, detail="Unknown client_id")
-    if redirect_uri not in _allowed_redirect_uris():
+
+    allowed = list(oauth_client["redirect_uris"])
+    # First-party client also accepts dynamic frontend origin
+    if client_id == FIRST_PARTY_CLIENT_ID:
+        dynamic = f"{settings.frontend_origin.rstrip('/')}/callback"
+        if dynamic not in allowed:
+            allowed.append(dynamic)
+
+    if redirect_uri not in allowed:
         raise HTTPException(status_code=400, detail="Invalid redirect_uri")
 
 
 @router.post("/authorize")
 async def authorize(body: AuthorizeRequest) -> Response:
     """OAuth 2.1 authorization endpoint with embedded credentials."""
-    _validate_client(body.client_id, body.redirect_uri)
+    await _validate_client(body.client_id, body.redirect_uri)
 
     if body.code_challenge_method != "S256":
         raise HTTPException(status_code=400, detail="Only S256 is supported")
@@ -224,3 +233,25 @@ async def revoke(request: Request, response: Response) -> dict:
     response.delete_cookie("refresh_token", path="/api/v1/oauth/token")
     response.delete_cookie("has_session", path="/")
     return {"status": "ok"}
+
+
+@router.post("/register", status_code=201)
+async def register_client(body: ClientRegistrationRequest) -> ClientRegistrationResponse:
+    """RFC 7591 Dynamic Client Registration."""
+    import time
+    client = await db.create_oauth_client(
+        client_name=body.client_name,
+        redirect_uris=body.redirect_uris,
+        grant_types=body.grant_types,
+        response_types=body.response_types,
+        token_endpoint_auth_method=body.token_endpoint_auth_method,
+    )
+    return ClientRegistrationResponse(
+        client_id=client["client_id"],
+        client_name=client["client_name"],
+        redirect_uris=client["redirect_uris"],
+        grant_types=client["grant_types"],
+        response_types=client["response_types"],
+        token_endpoint_auth_method=client["token_endpoint_auth_method"],
+        client_id_issued_at=int(time.time()),
+    )
