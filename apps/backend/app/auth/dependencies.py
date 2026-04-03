@@ -4,7 +4,6 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.auth.jwt import verify_access_token
-from app.config import settings
 from app.database import db
 
 _bearer_scheme = HTTPBearer(auto_error=False)
@@ -22,9 +21,7 @@ async def get_current_user(
         )
 
     try:
-        claims = verify_access_token(
-            credentials.credentials, secret=settings.effective_jwt_secret
-        )
+        claims = verify_access_token(credentials.credentials)
     except ValueError:
         raise HTTPException(
             status_code=401,
@@ -49,9 +46,7 @@ async def get_optional_user(
     if not credentials:
         return None
     try:
-        claims = verify_access_token(
-            credentials.credentials, secret=settings.effective_jwt_secret
-        )
+        claims = verify_access_token(credentials.credentials)
     except ValueError:
         return None
     return await db.get_user_by_id(claims["sub"])

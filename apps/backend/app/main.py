@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
+from app.auth.keys import load_rsa_keys
 from app.config import settings
 from app.database import db
 from app.pdf import close_pdf_renderer, init_pdf_renderer
@@ -35,6 +36,10 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     await db.init()
+    load_rsa_keys(
+        pem_data=settings.rsa_private_key_pem or None,
+        key_file=str(settings.effective_rsa_key_file),
+    )
     yield
     try:
         await close_pdf_renderer()
