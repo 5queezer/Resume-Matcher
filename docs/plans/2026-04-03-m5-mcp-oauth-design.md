@@ -99,7 +99,7 @@ Methods:
 - `tools/list` -> tool definitions (auth required)
 - `tools/call` -> execute tool (auth required)
 
-Tools: `list_resumes`, `get_resume`, `upload_resume`, `set_master_resume`, `upload_job_description`, `tailor_resume`, `get_tailoring_result`, `generate_cover_letter`
+Tools: `list_resumes`, `get_resume`, `get_status`, `upload_job_description`, `set_master_resume`
 
 Auth: Extract Bearer token, verify RS256 JWT, resolve user, pass to tool handler.
 
