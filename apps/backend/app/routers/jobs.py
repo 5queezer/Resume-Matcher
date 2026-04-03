@@ -20,6 +20,11 @@ async def upload_job_descriptions(request: JobUploadRequest, user: dict = Depend
     if not request.job_descriptions:
         raise HTTPException(status_code=400, detail="No job descriptions provided")
 
+    if request.resume_id:
+        resume = await db.get_resume(request.resume_id, user["id"])
+        if not resume:
+            raise HTTPException(status_code=404, detail="Resume not found")
+
     job_ids = []
     for jd in request.job_descriptions:
         if not jd.strip():

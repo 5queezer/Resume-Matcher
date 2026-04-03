@@ -20,10 +20,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Make user_id NOT NULL on resumes, jobs, improvements; add per-user master index."""
-    # Delete all rows — no production data exists yet.
-    op.execute(sa.text("DELETE FROM improvements"))
-    op.execute(sa.text("DELETE FROM jobs"))
-    op.execute(sa.text("DELETE FROM resumes"))
+    # Delete only orphaned rows (NULL user_id) -- safe for populated databases
+    op.execute(sa.text("DELETE FROM improvements WHERE user_id IS NULL"))
+    op.execute(sa.text("DELETE FROM jobs WHERE user_id IS NULL"))
+    op.execute(sa.text("DELETE FROM resumes WHERE user_id IS NULL"))
 
     # Make user_id NOT NULL using batch mode (required for SQLite).
     with op.batch_alter_table("resumes") as batch_op:
