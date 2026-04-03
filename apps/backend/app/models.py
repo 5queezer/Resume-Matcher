@@ -30,7 +30,7 @@ class User(Base):
 class Resume(Base):
     __tablename__ = "resumes"
     resume_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     content: Mapped[str] = mapped_column(Text)
     content_type: Mapped[str] = mapped_column(String(10), default="md")
     filename: Mapped[str | None] = mapped_column(String(255))
@@ -44,13 +44,13 @@ class Resume(Base):
     original_markdown: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    user: Mapped["User | None"] = relationship(back_populates="resumes")
+    user: Mapped["User"] = relationship(back_populates="resumes")
 
 
 class Job(Base):
     __tablename__ = "jobs"
     job_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     content: Mapped[str] = mapped_column(Text)
     resume_id: Mapped[str | None] = mapped_column(ForeignKey("resumes.resume_id"), index=True)
     job_keywords: Mapped[dict | None] = mapped_column(nullable=True)
@@ -65,7 +65,7 @@ class Job(Base):
 class Improvement(Base):
     __tablename__ = "improvements"
     request_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     original_resume_id: Mapped[str] = mapped_column(ForeignKey("resumes.resume_id"), index=True)
     tailored_resume_id: Mapped[str] = mapped_column(ForeignKey("resumes.resume_id"), index=True)
     job_id: Mapped[str] = mapped_column(ForeignKey("jobs.job_id"), index=True)
