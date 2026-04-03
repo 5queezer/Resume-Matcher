@@ -32,14 +32,27 @@ def jwt_secret(monkeypatch) -> str:
 
 
 @pytest.fixture
-async def client(test_db, jwt_secret, rsa_keys, first_party_client, monkeypatch):
+async def client(test_db, jwt_secret, monkeypatch):
     """Async HTTP client with test database and JWT secret injected.
 
     Patches the ``db`` attribute in every module that imports it so that
     the routers, services **and** the lifespan all talk to the in-memory
-    test database.  The first_party_client fixture seeds the default OAuth
-    client so that authorize/token flows work with DB-backed validation.
+    test database.
     """
+    # Load RSA keys for JWT signing (inline to avoid async fixture chain issues)
+    from joserfc.jwk import RSAKey as _RSAKey
+    reset_keys()
+    _key = _RSAKey.generate_key(2048)
+    load_rsa_keys(pem_data=_key.as_pem(private=True).decode("utf-8"))
+
+    # Seed first-party OAuth client (normally done by migration)
+    await test_db.create_oauth_client(
+        client_id="resume-matcher-web",
+        client_name="Resume Matcher Web",
+        redirect_uris=["http://localhost:3000/callback", "http://127.0.0.1:3000/callback"],
+        grant_types=["authorization_code", "refresh_token"],
+    )
+
     import app.database as db_module
     import app.auth.dependencies as auth_deps_mod
     import app.routers.auth as auth_mod
