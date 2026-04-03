@@ -2,7 +2,7 @@ import { ImprovedResult } from '@/components/common/resume_previewer_context';
 import type { ResumeData } from '@/components/dashboard/resume-component';
 import { type TemplateSettings } from '@/lib/types/template-settings';
 import { type Locale } from '@/i18n/config';
-import { API_BASE, apiPost, apiPatch, apiDelete, apiFetch } from './client';
+import { API_BASE, authFetch } from './client';
 
 // Matches backend schemas/models.py ResumeData
 interface ProcessedResume {
@@ -114,7 +114,15 @@ async function postImprove(
 ): Promise<ImprovedResult> {
   let response: Response;
   try {
-    response = await apiPost(endpoint, payload, 240_000);
+    response = await authFetch(
+      endpoint,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+      240_000
+    );
   } catch (networkError) {
     console.error(`Network error during ${endpoint}:`, networkError);
     throw networkError;
@@ -139,9 +147,10 @@ export async function uploadJobDescriptions(
   descriptions: string[],
   resumeId: string
 ): Promise<string> {
-  const res = await apiPost('/jobs/upload', {
-    job_descriptions: descriptions,
-    resume_id: resumeId,
+  const res = await authFetch('/jobs/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ job_descriptions: descriptions, resume_id: resumeId }),
   });
   if (!res.ok) throw new Error(`Upload failed with status ${res.status}`);
   const data = await res.json();
@@ -183,7 +192,7 @@ export async function confirmImproveResume(
 
 /** Fetches a raw resume record for previewing the original upload */
 export async function fetchResume(resumeId: string): Promise<ResumeResponse['data']> {
-  const res = await apiFetch(`/resumes?resume_id=${encodeURIComponent(resumeId)}`);
+  const res = await authFetch(`/resumes?resume_id=${encodeURIComponent(resumeId)}`);
   if (!res.ok) {
     throw new Error(`Failed to load resume (status ${res.status}).`);
   }
@@ -194,7 +203,7 @@ export async function fetchResume(resumeId: string): Promise<ResumeResponse['dat
 }
 
 export async function fetchResumeList(includeMaster = false): Promise<ResumeListItem[]> {
-  const res = await apiFetch(`/resumes/list?include_master=${includeMaster ? 'true' : 'false'}`);
+  const res = await authFetch(`/resumes/list?include_master=${includeMaster ? 'true' : 'false'}`);
   if (!res.ok) {
     throw new Error(`Failed to load resumes list (status ${res.status}).`);
   }
@@ -206,7 +215,11 @@ export async function updateResume(
   resumeId: string,
   resumeData: ProcessedResume
 ): Promise<ResumeResponse['data']> {
-  const res = await apiPatch(`/resumes/${encodeURIComponent(resumeId)}`, resumeData);
+  const res = await authFetch(`/resumes/${encodeURIComponent(resumeId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(resumeData),
+  });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Failed to update resume (status ${res.status}): ${text}`);
@@ -257,7 +270,7 @@ export async function downloadResumePdf(
   locale?: Locale
 ): Promise<Blob> {
   const url = getResumePdfUrl(resumeId, settings, locale);
-  const res = await apiFetch(url);
+  const res = await authFetch(url);
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Failed to download resume (status ${res.status}): ${text}`);
@@ -267,7 +280,7 @@ export async function downloadResumePdf(
 
 /** Deletes a resume by ID */
 export async function deleteResume(resumeId: string): Promise<void> {
-  const res = await apiDelete(`/resumes/${encodeURIComponent(resumeId)}`);
+  const res = await authFetch(`/resumes/${encodeURIComponent(resumeId)}`, { method: 'DELETE' });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Failed to delete resume (status ${res.status}): ${text}`);
@@ -276,7 +289,11 @@ export async function deleteResume(resumeId: string): Promise<void> {
 
 /** Updates the cover letter for a resume */
 export async function updateCoverLetter(resumeId: string, content: string): Promise<void> {
-  const res = await apiPatch(`/resumes/${encodeURIComponent(resumeId)}/cover-letter`, { content });
+  const res = await authFetch(`/resumes/${encodeURIComponent(resumeId)}/cover-letter`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Failed to update cover letter (status ${res.status}): ${text}`);
@@ -285,8 +302,10 @@ export async function updateCoverLetter(resumeId: string, content: string): Prom
 
 /** Updates the outreach message for a resume */
 export async function updateOutreachMessage(resumeId: string, content: string): Promise<void> {
-  const res = await apiPatch(`/resumes/${encodeURIComponent(resumeId)}/outreach-message`, {
-    content,
+  const res = await authFetch(`/resumes/${encodeURIComponent(resumeId)}/outreach-message`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -296,7 +315,11 @@ export async function updateOutreachMessage(resumeId: string, content: string): 
 
 /** Renames a resume by updating its title */
 export async function renameResume(resumeId: string, title: string): Promise<void> {
-  const res = await apiPatch(`/resumes/${encodeURIComponent(resumeId)}/title`, { title });
+  const res = await authFetch(`/resumes/${encodeURIComponent(resumeId)}/title`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Failed to rename resume (status ${res.status}): ${text}`);
@@ -323,7 +346,7 @@ export async function downloadCoverLetterPdf(
   locale?: Locale
 ): Promise<Blob> {
   const url = getCoverLetterPdfUrl(resumeId, pageSize, locale);
-  const res = await apiFetch(url);
+  const res = await authFetch(url);
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Failed to download cover letter (status ${res.status}): ${text}`);
@@ -333,7 +356,11 @@ export async function downloadCoverLetterPdf(
 
 /** Generates a cover letter on-demand for a tailored resume */
 export async function generateCoverLetter(resumeId: string): Promise<string> {
-  const res = await apiPost(`/resumes/${encodeURIComponent(resumeId)}/generate-cover-letter`, {});
+  const res = await authFetch(`/resumes/${encodeURIComponent(resumeId)}/generate-cover-letter`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Failed to generate cover letter (status ${res.status}): ${text}`);
@@ -344,7 +371,11 @@ export async function generateCoverLetter(resumeId: string): Promise<string> {
 
 /** Generates an outreach message on-demand for a tailored resume */
 export async function generateOutreachMessage(resumeId: string): Promise<string> {
-  const res = await apiPost(`/resumes/${encodeURIComponent(resumeId)}/generate-outreach`, {});
+  const res = await authFetch(`/resumes/${encodeURIComponent(resumeId)}/generate-outreach`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Failed to generate outreach message (status ${res.status}): ${text}`);
@@ -355,7 +386,11 @@ export async function generateOutreachMessage(resumeId: string): Promise<string>
 
 /** Retries AI processing for a failed resume */
 export async function retryProcessing(resumeId: string): Promise<ResumeUploadResponse> {
-  const res = await apiPost(`/resumes/${encodeURIComponent(resumeId)}/retry-processing`, {});
+  const res = await authFetch(`/resumes/${encodeURIComponent(resumeId)}/retry-processing`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Failed to retry processing (status ${res.status}): ${text}`);
@@ -367,7 +402,7 @@ export async function retryProcessing(resumeId: string): Promise<ResumeUploadRes
 export async function fetchJobDescription(
   resumeId: string
 ): Promise<{ job_id: string; content: string }> {
-  const res = await apiFetch(`/resumes/${encodeURIComponent(resumeId)}/job-description`);
+  const res = await authFetch(`/resumes/${encodeURIComponent(resumeId)}/job-description`);
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`Failed to fetch job description (status ${res.status}): ${text}`);

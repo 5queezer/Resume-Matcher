@@ -2,7 +2,7 @@
  * API functions for AI-powered resume enrichment.
  */
 
-import { apiFetch, apiPost } from './client';
+import { authFetch } from './client';
 
 // Types matching backend schemas
 
@@ -50,9 +50,8 @@ export interface EnhancementPreview {
  * Returns items with weak descriptions and clarifying questions.
  */
 export async function analyzeResume(resumeId: string): Promise<AnalysisResponse> {
-  const res = await apiFetch(`/enrichment/analyze/${resumeId}`, {
+  const res = await authFetch(`/enrichment/analyze/${resumeId}`, {
     method: 'POST',
-    credentials: 'include',
   });
 
   if (!res.ok) {
@@ -70,9 +69,10 @@ export async function generateEnhancements(
   resumeId: string,
   answers: AnswerInput[]
 ): Promise<EnhancementPreview> {
-  const res = await apiPost('/enrichment/enhance', {
-    resume_id: resumeId,
-    answers,
+  const res = await authFetch('/enrichment/enhance', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resume_id: resumeId, answers }),
   });
 
   if (!res.ok) {
@@ -90,8 +90,10 @@ export async function applyEnhancements(
   resumeId: string,
   enhancements: EnhancedDescription[]
 ): Promise<{ message: string; updated_items: number }> {
-  const res = await apiPost(`/enrichment/apply/${resumeId}`, {
-    enhancements,
+  const res = await authFetch(`/enrichment/apply/${resumeId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enhancements }),
   });
 
   if (!res.ok) {
@@ -149,7 +151,11 @@ export interface RegenerateResponse {
  * Uses AI to rewrite content addressing user's concerns.
  */
 export async function regenerateItems(request: RegenerateRequest): Promise<RegenerateResponse> {
-  const res = await apiPost('/enrichment/regenerate', request);
+  const res = await authFetch('/enrichment/regenerate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -166,7 +172,11 @@ export async function applyRegeneratedItems(
   resumeId: string,
   regeneratedItems: RegeneratedItem[]
 ): Promise<{ message: string; updated_items: number }> {
-  const res = await apiPost(`/enrichment/apply-regenerated/${resumeId}`, regeneratedItems);
+  const res = await authFetch(`/enrichment/apply-regenerated/${resumeId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(regeneratedItems),
+  });
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
