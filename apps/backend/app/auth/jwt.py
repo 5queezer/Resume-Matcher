@@ -1,23 +1,22 @@
-"""JWT access token operations using joserfc."""
+"""JWT access token operations using joserfc (RS256)."""
 
 import time
 
 from joserfc import jwt
-from joserfc.jwk import OctKey
 
 from app.auth.constants import ACCESS_TOKEN_EXPIRE_MINUTES
+from app.auth.keys import get_kid, get_private_key, get_public_key
 
-_ALGORITHM = "HS256"
+_ALGORITHM = "RS256"
 _ISSUER = "resume-matcher"
 
 
 def create_access_token(
     user_id: str,
     email: str,
-    secret: str,
     expires_minutes: int = ACCESS_TOKEN_EXPIRE_MINUTES,
 ) -> str:
-    """Create a signed JWT access token."""
+    """Create an RS256-signed JWT access token."""
     now = int(time.time())
     claims = {
         "sub": user_id,
@@ -26,15 +25,15 @@ def create_access_token(
         "iat": now,
         "exp": now + (expires_minutes * 60),
     }
-    key = OctKey.import_key(secret)
-    return jwt.encode({"alg": _ALGORITHM}, claims, key)
+    key = get_private_key()
+    return jwt.encode({"alg": _ALGORITHM, "kid": get_kid()}, claims, key)
 
 
-def verify_access_token(token: str, secret: str) -> dict:
-    """Verify and decode a JWT access token. Raises ValueError on failure."""
-    key = OctKey.import_key(secret)
+def verify_access_token(token: str) -> dict:
+    """Verify and decode an RS256 JWT access token. Raises ValueError on failure."""
+    key = get_public_key()
     try:
-        decoded = jwt.decode(token, key)
+        decoded = jwt.decode(token, key, algorithms=["RS256"])
     except Exception as e:
         raise ValueError(f"Token invalid: {e}") from e
 

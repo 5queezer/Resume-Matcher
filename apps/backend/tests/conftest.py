@@ -6,6 +6,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.auth.jwt import create_access_token
+from app.auth.keys import load_rsa_keys, reset_keys
 from app.database import Database
 
 
@@ -38,11 +39,28 @@ async def client(test_db, jwt_secret, monkeypatch):
     the routers, services **and** the lifespan all talk to the in-memory
     test database.
     """
+    # Load RSA keys and seed OAuth client inline (duplicates rsa_keys and
+    # first_party_client fixtures) to avoid pytest-asyncio issues with
+    # complex async fixture dependency chains.
+    from joserfc.jwk import RSAKey as _RSAKey
+    reset_keys()
+    _key = _RSAKey.generate_key(2048)
+    load_rsa_keys(pem_data=_key.as_pem(private=True).decode("utf-8"))
+
+    # Seed first-party OAuth client (normally done by migration)
+    await test_db.create_oauth_client(
+        client_id="resume-matcher-web",
+        client_name="Resume Matcher Web",
+        redirect_uris=["http://localhost:3000/callback", "http://127.0.0.1:3000/callback"],
+        grant_types=["authorization_code", "refresh_token"],
+    )
+
     import app.database as db_module
     import app.auth.dependencies as auth_deps_mod
     import app.routers.auth as auth_mod
     import app.routers.oauth as oauth_mod
     import app.routers.google_oauth as google_oauth_mod
+    import app.routers.mcp as mcp_mod
     import app.routers.resumes as resumes_mod
     import app.routers.jobs as jobs_mod
     import app.routers.health as health_mod
@@ -50,7 +68,7 @@ async def client(test_db, jwt_secret, monkeypatch):
     import app.routers.enrichment as enrichment_mod
     import app.main as main_mod
 
-    for mod in (db_module, auth_deps_mod, auth_mod, oauth_mod, google_oauth_mod, resumes_mod, jobs_mod, health_mod, config_mod, enrichment_mod, main_mod):
+    for mod in (db_module, auth_deps_mod, auth_mod, oauth_mod, google_oauth_mod, mcp_mod, resumes_mod, jobs_mod, health_mod, config_mod, enrichment_mod, main_mod):
         if hasattr(mod, "db"):
             monkeypatch.setattr(mod, "db", test_db)
 
@@ -236,22 +254,52 @@ def sample_changes():
 
 
 # ---------------------------------------------------------------------------
+# RSA key fixture for RS256 JWT signing
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def rsa_keys():
+    """Generate and load test RSA keys for JWT signing."""
+    from joserfc.jwk import RSAKey
+    reset_keys()
+    key = RSAKey.generate_key(2048)
+    load_rsa_keys(pem_data=key.as_pem(private=True).decode("utf-8"))
+    yield
+    reset_keys()
+
+
+# ---------------------------------------------------------------------------
+# First-party OAuth client fixture
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+async def first_party_client(test_db):
+    """Seed the first-party OAuth client (normally done by migration)."""
+    await test_db.create_oauth_client(
+        client_id="resume-matcher-web",
+        client_name="Resume Matcher Web",
+        redirect_uris=["http://localhost:3000/callback", "http://127.0.0.1:3000/callback"],
+        grant_types=["authorization_code", "refresh_token"],
+    )
+
+
+# ---------------------------------------------------------------------------
 # Auth fixtures — user creation + JWT tokens
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-async def auth_user_a(test_db, jwt_secret):
+async def auth_user_a(test_db, rsa_keys):
     """Create user A and return (user_dict, bearer_token)."""
     user = await test_db.create_user(email="alice@test.com", hashed_password="hash_a", display_name="Alice")
-    token = create_access_token(user_id=user["id"], email=user["email"], secret=jwt_secret)
+    token = create_access_token(user_id=user["id"], email=user["email"])
     return user, token
 
 
 @pytest.fixture
-async def auth_user_b(test_db, jwt_secret):
+async def auth_user_b(test_db, rsa_keys):
     """Create user B and return (user_dict, bearer_token)."""
     user = await test_db.create_user(email="bob@test.com", hashed_password="hash_b", display_name="Bob")
-    token = create_access_token(user_id=user["id"], email=user["email"], secret=jwt_secret)
+    token = create_access_token(user_id=user["id"], email=user["email"])
     return user, token
 
 
