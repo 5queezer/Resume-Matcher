@@ -30,9 +30,9 @@ class TestGetResume:
     """GET /api/v1/resumes?resume_id=..."""
 
     @patch("app.routers.resumes.db")
-    async def test_fetch_existing_resume(self, mock_db, client, mock_resume_record):
+    async def test_fetch_existing_resume(self, mock_db, client, auth_headers_a, mock_resume_record):
         mock_db.get_resume = AsyncMock(return_value=mock_resume_record)
-        resp = await client.get("/api/v1/resumes", params={"resume_id": "res-123"})
+        resp = await client.get("/api/v1/resumes", params={"resume_id": "res-123"}, headers=auth_headers_a)
         assert resp.status_code == 200
         data = resp.json()["data"]
         assert data["resume_id"] == "res-123"
@@ -40,9 +40,9 @@ class TestGetResume:
         assert data["processed_resume"]["summary"] != ""
 
     @patch("app.routers.resumes.db")
-    async def test_fetch_nonexistent_returns_404(self, mock_db, client):
+    async def test_fetch_nonexistent_returns_404(self, mock_db, client, auth_headers_a):
         mock_db.get_resume = AsyncMock(return_value=None)
-        resp = await client.get("/api/v1/resumes", params={"resume_id": "nonexistent"})
+        resp = await client.get("/api/v1/resumes", params={"resume_id": "nonexistent"}, headers=auth_headers_a)
         assert resp.status_code == 404
 
 
@@ -50,24 +50,24 @@ class TestListResumes:
     """GET /api/v1/resumes/list"""
 
     @patch("app.routers.resumes.db")
-    async def test_list_excludes_master_by_default(self, mock_db, client):
+    async def test_list_excludes_master_by_default(self, mock_db, client, auth_headers_a):
         mock_db.list_resumes = AsyncMock(return_value=[
             {"resume_id": "master", "is_master": True, "created_at": "2026-01-01", "updated_at": "2026-01-01"},
             {"resume_id": "tailored-1", "is_master": False, "created_at": "2026-01-02", "updated_at": "2026-01-02"},
         ])
-        resp = await client.get("/api/v1/resumes/list")
+        resp = await client.get("/api/v1/resumes/list", headers=auth_headers_a)
         assert resp.status_code == 200
         data = resp.json()["data"]
         assert len(data) == 1
         assert data[0]["resume_id"] == "tailored-1"
 
     @patch("app.routers.resumes.db")
-    async def test_list_includes_master_when_requested(self, mock_db, client):
+    async def test_list_includes_master_when_requested(self, mock_db, client, auth_headers_a):
         mock_db.list_resumes = AsyncMock(return_value=[
             {"resume_id": "master", "is_master": True, "created_at": "2026-01-01", "updated_at": "2026-01-01"},
             {"resume_id": "tailored-1", "is_master": False, "created_at": "2026-01-02", "updated_at": "2026-01-02"},
         ])
-        resp = await client.get("/api/v1/resumes/list", params={"include_master": True})
+        resp = await client.get("/api/v1/resumes/list", params={"include_master": True}, headers=auth_headers_a)
         assert resp.status_code == 200
         data = resp.json()["data"]
         assert len(data) == 2
@@ -77,15 +77,15 @@ class TestDeleteResume:
     """DELETE /api/v1/resumes/{resume_id}"""
 
     @patch("app.routers.resumes.db")
-    async def test_delete_existing_resume(self, mock_db, client):
+    async def test_delete_existing_resume(self, mock_db, client, auth_headers_a):
         mock_db.delete_resume = AsyncMock(return_value=True)
-        resp = await client.delete("/api/v1/resumes/res-123")
+        resp = await client.delete("/api/v1/resumes/res-123", headers=auth_headers_a)
         assert resp.status_code == 200
 
     @patch("app.routers.resumes.db")
-    async def test_delete_nonexistent_returns_404(self, mock_db, client):
+    async def test_delete_nonexistent_returns_404(self, mock_db, client, auth_headers_a):
         mock_db.delete_resume = AsyncMock(return_value=False)
-        resp = await client.delete("/api/v1/resumes/nonexistent")
+        resp = await client.delete("/api/v1/resumes/nonexistent", headers=auth_headers_a)
         assert resp.status_code == 404
 
 
@@ -93,16 +93,16 @@ class TestUpdateTitle:
     """PATCH /api/v1/resumes/{resume_id}/title"""
 
     @patch("app.routers.resumes.db")
-    async def test_update_title(self, mock_db, client, mock_resume_record):
+    async def test_update_title(self, mock_db, client, auth_headers_a, mock_resume_record):
         mock_db.get_resume = AsyncMock(return_value=mock_resume_record)
         mock_db.update_resume = AsyncMock(return_value={**mock_resume_record, "title": "New Title"})
-        resp = await client.patch("/api/v1/resumes/res-123/title", json={"title": "New Title"})
+        resp = await client.patch("/api/v1/resumes/res-123/title", json={"title": "New Title"}, headers=auth_headers_a)
         assert resp.status_code == 200
 
     @patch("app.routers.resumes.db")
-    async def test_update_title_nonexistent_returns_404(self, mock_db, client):
+    async def test_update_title_nonexistent_returns_404(self, mock_db, client, auth_headers_a):
         mock_db.get_resume = AsyncMock(return_value=None)
-        resp = await client.patch("/api/v1/resumes/nonexistent/title", json={"title": "X"})
+        resp = await client.patch("/api/v1/resumes/nonexistent/title", json={"title": "X"}, headers=auth_headers_a)
         assert resp.status_code == 404
 
 
@@ -110,10 +110,10 @@ class TestUpdateCoverLetter:
     """PATCH /api/v1/resumes/{resume_id}/cover-letter"""
 
     @patch("app.routers.resumes.db")
-    async def test_update_cover_letter(self, mock_db, client, mock_resume_record):
+    async def test_update_cover_letter(self, mock_db, client, auth_headers_a, mock_resume_record):
         mock_db.get_resume = AsyncMock(return_value=mock_resume_record)
         mock_db.update_resume = AsyncMock(return_value={**mock_resume_record, "cover_letter": "Dear hiring manager..."})
-        resp = await client.patch("/api/v1/resumes/res-123/cover-letter", json={"content": "Dear hiring manager..."})
+        resp = await client.patch("/api/v1/resumes/res-123/cover-letter", json={"content": "Dear hiring manager..."}, headers=auth_headers_a)
         assert resp.status_code == 200
 
 
@@ -121,10 +121,10 @@ class TestUpdateOutreachMessage:
     """PATCH /api/v1/resumes/{resume_id}/outreach-message"""
 
     @patch("app.routers.resumes.db")
-    async def test_update_outreach(self, mock_db, client, mock_resume_record):
+    async def test_update_outreach(self, mock_db, client, auth_headers_a, mock_resume_record):
         mock_db.get_resume = AsyncMock(return_value=mock_resume_record)
         mock_db.update_resume = AsyncMock(return_value={**mock_resume_record, "outreach_message": "Hi, I saw your posting..."})
-        resp = await client.patch("/api/v1/resumes/res-123/outreach-message", json={"content": "Hi, I saw your posting..."})
+        resp = await client.patch("/api/v1/resumes/res-123/outreach-message", json={"content": "Hi, I saw your posting..."}, headers=auth_headers_a)
         assert resp.status_code == 200
 
 
@@ -133,19 +133,19 @@ class TestRetryProcessing:
 
     @patch("app.routers.resumes.parse_resume_to_json", new_callable=AsyncMock)
     @patch("app.routers.resumes.db")
-    async def test_retry_successful(self, mock_db, mock_parse, client, mock_resume_record, sample_resume):
+    async def test_retry_successful(self, mock_db, mock_parse, client, auth_headers_a, mock_resume_record, sample_resume):
         failed_record = {**mock_resume_record, "processing_status": "failed"}
         mock_db.get_resume = AsyncMock(return_value=failed_record)
         mock_parse.return_value = sample_resume
         mock_db.update_resume = AsyncMock(return_value={**failed_record, "processing_status": "ready", "processed_data": sample_resume})
-        resp = await client.post("/api/v1/resumes/res-123/retry-processing")
+        resp = await client.post("/api/v1/resumes/res-123/retry-processing", headers=auth_headers_a)
         assert resp.status_code == 200
         data = resp.json()
         assert data["processing_status"] == "ready"
 
     @patch("app.routers.resumes.db")
-    async def test_retry_not_failed_returns_400(self, mock_db, client, mock_resume_record):
+    async def test_retry_not_failed_returns_400(self, mock_db, client, auth_headers_a, mock_resume_record):
         # processing_status is "ready", not "failed"
         mock_db.get_resume = AsyncMock(return_value=mock_resume_record)
-        resp = await client.post("/api/v1/resumes/res-123/retry-processing")
+        resp = await client.post("/api/v1/resumes/res-123/retry-processing", headers=auth_headers_a)
         assert resp.status_code == 400

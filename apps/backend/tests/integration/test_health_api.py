@@ -38,7 +38,7 @@ class TestStatusEndpoint:
     @patch("app.routers.health.db")
     @patch("app.routers.health.check_llm_health", new_callable=AsyncMock)
     @patch("app.routers.health.get_llm_config")
-    async def test_status_ready(self, mock_config, mock_health, mock_db, client):
+    async def test_status_ready(self, mock_config, mock_health, mock_db, client, auth_headers_a):
         mock_config.return_value = type("C", (), {"api_key": "sk-test", "provider": "openai"})()
         mock_health.return_value = {"healthy": True}
         mock_db.get_stats = AsyncMock(return_value={
@@ -47,7 +47,7 @@ class TestStatusEndpoint:
             "total_improvements": 0,
             "has_master_resume": True,
         })
-        resp = await client.get("/api/v1/status")
+        resp = await client.get("/api/v1/status", headers=auth_headers_a)
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "ready"
@@ -57,7 +57,7 @@ class TestStatusEndpoint:
     @patch("app.routers.health.db")
     @patch("app.routers.health.check_llm_health", new_callable=AsyncMock)
     @patch("app.routers.health.get_llm_config")
-    async def test_status_setup_required(self, mock_config, mock_health, mock_db, client):
+    async def test_status_setup_required(self, mock_config, mock_health, mock_db, client, auth_headers_a):
         mock_config.return_value = type("C", (), {"api_key": "", "provider": "openai"})()
         mock_health.return_value = {"healthy": False}
         mock_db.get_stats = AsyncMock(return_value={
@@ -66,7 +66,7 @@ class TestStatusEndpoint:
             "total_improvements": 0,
             "has_master_resume": False,
         })
-        resp = await client.get("/api/v1/status")
+        resp = await client.get("/api/v1/status", headers=auth_headers_a)
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "setup_required"
