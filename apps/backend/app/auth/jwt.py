@@ -33,7 +33,7 @@ def verify_access_token(token: str) -> dict:
     """Verify and decode an RS256 JWT access token. Raises ValueError on failure."""
     key = get_public_key()
     try:
-        decoded = jwt.decode(token, key)
+        decoded = jwt.decode(token, key, algorithms=["RS256"])
     except Exception as e:
         raise ValueError(f"Token invalid: {e}") from e
 

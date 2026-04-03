@@ -39,7 +39,9 @@ async def client(test_db, jwt_secret, monkeypatch):
     the routers, services **and** the lifespan all talk to the in-memory
     test database.
     """
-    # Load RSA keys for JWT signing (inline to avoid async fixture chain issues)
+    # Load RSA keys and seed OAuth client inline (duplicates rsa_keys and
+    # first_party_client fixtures) to avoid pytest-asyncio issues with
+    # complex async fixture dependency chains.
     from joserfc.jwk import RSAKey as _RSAKey
     reset_keys()
     _key = _RSAKey.generate_key(2048)
