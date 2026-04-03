@@ -1,4 +1,4 @@
-import { apiFetch } from './client';
+import { apiFetch, authFetch } from './client';
 
 // Supported LLM providers
 export type LLMProvider = 'openai' | 'anthropic' | 'openrouter' | 'gemini' | 'deepseek' | 'ollama';
@@ -110,7 +110,7 @@ export async function testLlmConnection(config?: LLMConfigUpdate): Promise<LLMHe
 
 // Fetch system status
 export async function fetchSystemStatus(): Promise<SystemStatus> {
-  const res = await apiFetch('/status', { credentials: 'include' });
+  const res = await authFetch('/status');
 
   if (!res.ok) {
     throw new Error(`Failed to fetch system status (status ${res.status}).`);

@@ -5,6 +5,7 @@ import copy
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app.auth.jwt import create_access_token
 from app.database import Database
 
 
@@ -22,7 +23,15 @@ async def test_db():
 
 
 @pytest.fixture
-async def client(test_db, monkeypatch):
+def jwt_secret(monkeypatch) -> str:
+    """Patch JWT secret for tests -- shared by client and auth fixtures."""
+    secret = "test-secret-for-tests"
+    monkeypatch.setattr("app.config.settings.jwt_secret_key", secret)
+    return secret
+
+
+@pytest.fixture
+async def client(test_db, jwt_secret, monkeypatch):
     """Async HTTP client with test database and JWT secret injected.
 
     Patches the ``db`` attribute in every module that imports it so that
@@ -44,8 +53,6 @@ async def client(test_db, monkeypatch):
     for mod in (db_module, auth_deps_mod, auth_mod, oauth_mod, google_oauth_mod, resumes_mod, jobs_mod, health_mod, config_mod, enrichment_mod, main_mod):
         if hasattr(mod, "db"):
             monkeypatch.setattr(mod, "db", test_db)
-
-    monkeypatch.setattr("app.config.settings.jwt_secret_key", "test-secret-for-tests")
 
     from app.main import app
     async with AsyncClient(
@@ -226,3 +233,37 @@ def sample_changes():
             reason="Already in good order, no change needed",
         ),
     ]
+
+
+# ---------------------------------------------------------------------------
+# Auth fixtures — user creation + JWT tokens
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+async def auth_user_a(test_db, jwt_secret):
+    """Create user A and return (user_dict, bearer_token)."""
+    user = await test_db.create_user(email="alice@test.com", hashed_password="hash_a", display_name="Alice")
+    token = create_access_token(user_id=user["id"], email=user["email"], secret=jwt_secret)
+    return user, token
+
+
+@pytest.fixture
+async def auth_user_b(test_db, jwt_secret):
+    """Create user B and return (user_dict, bearer_token)."""
+    user = await test_db.create_user(email="bob@test.com", hashed_password="hash_b", display_name="Bob")
+    token = create_access_token(user_id=user["id"], email=user["email"], secret=jwt_secret)
+    return user, token
+
+
+@pytest.fixture
+def auth_headers_a(auth_user_a):
+    """Authorization headers for user A."""
+    _, token = auth_user_a
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def auth_headers_b(auth_user_b):
+    """Authorization headers for user B."""
+    _, token = auth_user_b
+    return {"Authorization": f"Bearer {token}"}
