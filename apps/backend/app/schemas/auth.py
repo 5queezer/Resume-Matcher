@@ -1,5 +1,7 @@
 """Pydantic schemas for authentication endpoints."""
 
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -60,7 +62,7 @@ class ClientRegistrationRequest(BaseModel):
     """RFC 7591 Dynamic Client Registration request."""
     redirect_uris: list[str] = Field(min_length=1)
     client_name: str | None = None
-    token_endpoint_auth_method: str = "none"
+    token_endpoint_auth_method: Literal["none"] = "none"
     grant_types: list[str] = Field(default=["authorization_code"])
     response_types: list[str] = Field(default=["code"])
 

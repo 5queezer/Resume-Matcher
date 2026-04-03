@@ -162,7 +162,7 @@ async def mcp_handler(request: Request) -> JSONResponse:
     """MCP Streamable HTTP endpoint (JSON-RPC 2.0)."""
     try:
         body = await request.json()
-    except Exception:
+    except (json.JSONDecodeError, UnicodeDecodeError):
         return JSONResponse(
             content=_jsonrpc_error(None, -32700, "Parse error"),
             status_code=200,
@@ -173,10 +173,20 @@ async def mcp_handler(request: Request) -> JSONResponse:
             content=_jsonrpc_error(None, -32600, "Batch requests not supported"),
             status_code=200,
         )
+    if not isinstance(body, dict):
+        return JSONResponse(
+            content=_jsonrpc_error(None, -32600, "Invalid Request"),
+            status_code=200,
+        )
 
     method = body.get("method")
     msg_id = body.get("id")
-    params = body.get("params", {})
+    params = body.get("params") or {}
+    if not isinstance(params, dict):
+        return JSONResponse(
+            content=_jsonrpc_error(msg_id, -32600, "Invalid Request"),
+            status_code=200,
+        )
 
     # -- initialize (no auth required) --
     if method == "initialize":
@@ -211,7 +221,11 @@ async def mcp_handler(request: Request) -> JSONResponse:
     # -- tools/call --
     if method == "tools/call":
         tool_name = params.get("name")
-        tool_args = params.get("arguments", {})
+        tool_args = params.get("arguments") or {}
+        if not isinstance(tool_args, dict):
+            return JSONResponse(
+                content=_jsonrpc_error(msg_id, -32602, "Invalid params"),
+            )
 
         handler = _TOOL_HANDLERS.get(tool_name)
         if not handler:
@@ -221,10 +235,10 @@ async def mcp_handler(request: Request) -> JSONResponse:
 
         try:
             text_result = await handler(user, tool_args)
-        except Exception as e:
-            logger.error("MCP tool %s failed: %s", tool_name, e, exc_info=True)
+        except Exception:
+            logger.exception("MCP tool %s failed", tool_name)
             return JSONResponse(
-                content=_jsonrpc_error(msg_id, -32603, f"Tool execution failed: {e}"),
+                content=_jsonrpc_error(msg_id, -32603, "Tool execution failed"),
             )
 
         return JSONResponse(content=_jsonrpc_result(msg_id, {

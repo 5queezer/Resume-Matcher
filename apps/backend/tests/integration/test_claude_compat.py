@@ -13,14 +13,16 @@ class TestClaudeCompat:
         assert "client_id" in resp.json()
 
     @pytest.mark.anyio
-    async def test_root_authorize_redirects(self, client):
+    async def test_root_authorize_redirects_to_frontend(self, client):
         resp = await client.get(
             "/authorize",
             params={"response_type": "code", "client_id": "test"},
             follow_redirects=False,
         )
-        assert resp.status_code == 307
-        assert "/api/v1/oauth/authorize" in resp.headers["location"]
+        assert resp.status_code == 302
+        location = resp.headers["location"]
+        assert "/login" in location
+        assert "client_id=test" in location
 
     @pytest.mark.anyio
     async def test_root_token_reaches_endpoint(self, client):

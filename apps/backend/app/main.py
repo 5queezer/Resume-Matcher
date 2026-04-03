@@ -133,32 +133,35 @@ async def protected_resource_metadata(request: Request) -> dict:
 
 from fastapi.responses import RedirectResponse as _RedirectResponse
 
+from app.schemas.auth import (
+    ClientRegistrationRequest,
+    ClientRegistrationResponse,
+    TokenRequest,
+    TokenResponse,
+)
+
 
 @app.get("/authorize")
 async def root_authorize(request: Request) -> _RedirectResponse:
-    """Redirect GET /authorize to /api/v1/oauth/authorize with query params."""
+    """Redirect browser authorize to frontend login with OAuth params."""
     qs = str(request.query_params)
-    target = "/api/v1/oauth/authorize"
+    target = f"{settings.frontend_origin}/login"
     if qs:
         target = f"{target}?{qs}"
-    return _RedirectResponse(url=target, status_code=307)
+    return _RedirectResponse(url=target, status_code=302)
 
 
-@app.post("/register", status_code=201)
-async def root_register(request: Request):
+@app.post("/register", status_code=201, response_model=ClientRegistrationResponse)
+async def root_register(body: ClientRegistrationRequest) -> ClientRegistrationResponse:
     """Proxy POST /register to the DCR endpoint."""
-    from app.schemas.auth import ClientRegistrationRequest
     from app.routers.oauth import register_client
-    body = ClientRegistrationRequest(**(await request.json()))
     return await register_client(body)
 
 
-@app.post("/token")
-async def root_token(request: Request, response: Response):
+@app.post("/token", response_model=TokenResponse)
+async def root_token(body: TokenRequest, request: Request, response: Response) -> TokenResponse:
     """Proxy POST /token to the token endpoint."""
-    from app.schemas.auth import TokenRequest
     from app.routers.oauth import token as token_handler
-    body = TokenRequest(**(await request.json()))
     return await token_handler(body, request, response)
 
 
