@@ -5,7 +5,7 @@ import logging
 import sys
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 
 # Fix for Windows: Use ProactorEventLoop for subprocess support (Playwright)
 if sys.platform == "win32":
@@ -19,7 +19,7 @@ from app.auth.keys import get_jwks, load_rsa_keys
 from app.config import settings
 from app.database import db
 from app.pdf import close_pdf_renderer, init_pdf_renderer
-from app.routers import auth_router, config_router, enrichment_router, google_oauth_router, health_router, jobs_router, oauth_router, resumes_router
+from app.routers import auth_router, config_router, enrichment_router, google_oauth_router, health_router, jobs_router, mcp_router, oauth_router, resumes_router
 
 
 def _configure_application_logging() -> None:
@@ -76,6 +76,7 @@ app.include_router(config_router, prefix="/api/v1")
 app.include_router(resumes_router, prefix="/api/v1")
 app.include_router(jobs_router, prefix="/api/v1")
 app.include_router(enrichment_router, prefix="/api/v1")
+app.include_router(mcp_router)  # No prefix — mounted at /mcp directly
 
 
 @app.get("/")
@@ -124,6 +125,41 @@ async def protected_resource_metadata(request: Request) -> dict:
         "bearer_methods_supported": ["header"],
         "resource_name": "Resume Matcher",
     }
+
+
+# -- claude.ai compatibility proxies ------------------------------------------
+# claude.ai web appends /authorize, /token, /register to the server root,
+# ignoring the URLs in AS metadata. These thin proxies handle that quirk.
+
+from fastapi.responses import RedirectResponse as _RedirectResponse
+
+
+@app.get("/authorize")
+async def root_authorize(request: Request) -> _RedirectResponse:
+    """Redirect GET /authorize to /api/v1/oauth/authorize with query params."""
+    qs = str(request.query_params)
+    target = "/api/v1/oauth/authorize"
+    if qs:
+        target = f"{target}?{qs}"
+    return _RedirectResponse(url=target, status_code=307)
+
+
+@app.post("/register", status_code=201)
+async def root_register(request: Request):
+    """Proxy POST /register to the DCR endpoint."""
+    from app.schemas.auth import ClientRegistrationRequest
+    from app.routers.oauth import register_client
+    body = ClientRegistrationRequest(**(await request.json()))
+    return await register_client(body)
+
+
+@app.post("/token")
+async def root_token(request: Request, response: Response):
+    """Proxy POST /token to the token endpoint."""
+    from app.schemas.auth import TokenRequest
+    from app.routers.oauth import token as token_handler
+    body = TokenRequest(**(await request.json()))
+    return await token_handler(body, request, response)
 
 
 if __name__ == "__main__":
