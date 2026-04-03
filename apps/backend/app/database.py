@@ -141,6 +141,7 @@ class Database:
     async def create_resume(
         self,
         content: str,
+        user_id: str,
         content_type: str = "md",
         filename: str | None = None,
         is_master: bool = False,
@@ -154,6 +155,7 @@ class Database:
     ) -> dict[str, Any]:
         resume = Resume(
             resume_id=str(uuid4()),
+            user_id=user_id,
             content=content,
             content_type=content_type,
             filename=filename,
@@ -175,6 +177,7 @@ class Database:
     async def create_resume_atomic_master(
         self,
         content: str,
+        user_id: str,
         content_type: str = "md",
         filename: str | None = None,
         processed_data: dict[str, Any] | None = None,
@@ -184,96 +187,113 @@ class Database:
         original_markdown: str | None = None,
     ) -> dict[str, Any]:
         async with self._master_resume_lock:
-            current_master = await self.get_master_resume()
+            current_master = await self.get_master_resume(user_id)
             is_master = current_master is None
             if current_master and current_master.get("processing_status") in ("failed", "processing"):
-                await self.update_resume(current_master["resume_id"], {"is_master": False})
+                await self.update_resume(current_master["resume_id"], user_id, {"is_master": False})
                 is_master = True
             return await self.create_resume(
-                content=content, content_type=content_type, filename=filename,
+                content=content, user_id=user_id, content_type=content_type, filename=filename,
                 is_master=is_master, processed_data=processed_data,
                 processing_status=processing_status, cover_letter=cover_letter,
                 outreach_message=outreach_message, original_markdown=original_markdown,
             )
 
-    async def get_resume(self, resume_id: str) -> dict[str, Any] | None:
+    async def get_resume(self, resume_id: str, user_id: str) -> dict[str, Any] | None:
         async with self._session() as session:
-            result = await session.execute(select(Resume).where(Resume.resume_id == resume_id))
+            result = await session.execute(
+                select(Resume).where(Resume.resume_id == resume_id, Resume.user_id == user_id)
+            )
             row = result.scalar_one_or_none()
             return self._resume_to_dict(row) if row else None
 
-    async def get_master_resume(self) -> dict[str, Any] | None:
+    async def get_master_resume(self, user_id: str) -> dict[str, Any] | None:
         async with self._session() as session:
-            result = await session.execute(select(Resume).where(Resume.is_master == True))
+            result = await session.execute(
+                select(Resume).where(Resume.is_master == True, Resume.user_id == user_id)
+            )
             row = result.scalar_one_or_none()
             return self._resume_to_dict(row) if row else None
 
-    async def update_resume(self, resume_id: str, updates: dict[str, Any]) -> dict[str, Any]:
+    async def update_resume(self, resume_id: str, user_id: str, updates: dict[str, Any]) -> dict[str, Any]:
         updates["updated_at"] = datetime.now(timezone.utc)
         async with self._session() as session:
             result = await session.execute(
-                update(Resume).where(Resume.resume_id == resume_id).values(**updates)
+                update(Resume).where(Resume.resume_id == resume_id, Resume.user_id == user_id).values(**updates)
             )
             if result.rowcount == 0:
                 raise ValueError(f"Resume not found: {resume_id}")
             await session.commit()
-        return await self.get_resume(resume_id)
+        return await self.get_resume(resume_id, user_id)
 
-    async def delete_resume(self, resume_id: str) -> bool:
+    async def delete_resume(self, resume_id: str, user_id: str) -> bool:
         async with self._session() as session:
-            result = await session.execute(delete(Resume).where(Resume.resume_id == resume_id))
+            result = await session.execute(
+                delete(Resume).where(Resume.resume_id == resume_id, Resume.user_id == user_id)
+            )
             await session.commit()
             return result.rowcount > 0
 
-    async def list_resumes(self) -> list[dict[str, Any]]:
+    async def list_resumes(self, user_id: str) -> list[dict[str, Any]]:
         async with self._session() as session:
-            result = await session.execute(select(Resume))
+            result = await session.execute(select(Resume).where(Resume.user_id == user_id))
             return [self._resume_to_dict(r) for r in result.scalars().all()]
 
-    async def set_master_resume(self, resume_id: str) -> bool:
+    async def set_master_resume(self, resume_id: str, user_id: str) -> bool:
         async with self._session() as session:
-            target = await session.execute(select(Resume).where(Resume.resume_id == resume_id))
+            target = await session.execute(
+                select(Resume).where(Resume.resume_id == resume_id, Resume.user_id == user_id)
+            )
             if not target.scalar_one_or_none():
                 logger.warning("Cannot set master: resume %s not found", resume_id)
                 return False
-            await session.execute(update(Resume).where(Resume.is_master == True).values(is_master=False))
-            await session.execute(update(Resume).where(Resume.resume_id == resume_id).values(is_master=True))
+            await session.execute(
+                update(Resume).where(Resume.is_master == True, Resume.user_id == user_id).values(is_master=False)
+            )
+            await session.execute(
+                update(Resume).where(Resume.resume_id == resume_id, Resume.user_id == user_id).values(is_master=True)
+            )
             await session.commit()
             return True
 
     # -- Job operations ------------------------------------------------------
 
-    async def create_job(self, content: str, resume_id: str | None = None) -> dict[str, Any]:
-        job = Job(job_id=str(uuid4()), content=content, resume_id=resume_id)
+    async def create_job(self, content: str, user_id: str, resume_id: str | None = None) -> dict[str, Any]:
+        job = Job(job_id=str(uuid4()), content=content, user_id=user_id, resume_id=resume_id)
         async with self._session() as session:
             session.add(job)
             await session.commit()
             await session.refresh(job)
             return self._job_to_dict(job)
 
-    async def get_job(self, job_id: str) -> dict[str, Any] | None:
+    async def get_job(self, job_id: str, user_id: str) -> dict[str, Any] | None:
         async with self._session() as session:
-            result = await session.execute(select(Job).where(Job.job_id == job_id))
+            result = await session.execute(
+                select(Job).where(Job.job_id == job_id, Job.user_id == user_id)
+            )
             row = result.scalar_one_or_none()
             return self._job_to_dict(row) if row else None
 
-    async def update_job(self, job_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
+    async def update_job(self, job_id: str, user_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
         async with self._session() as session:
-            result = await session.execute(update(Job).where(Job.job_id == job_id).values(**updates))
+            result = await session.execute(
+                update(Job).where(Job.job_id == job_id, Job.user_id == user_id).values(**updates)
+            )
             if result.rowcount == 0:
                 return None
             await session.commit()
-        return await self.get_job(job_id)
+        return await self.get_job(job_id, user_id)
 
     # -- Improvement operations ----------------------------------------------
 
     async def create_improvement(
         self, original_resume_id: str, tailored_resume_id: str,
-        job_id: str, improvements: list[dict[str, Any]],
+        job_id: str, improvements: list[dict[str, Any]], user_id: str,
     ) -> dict[str, Any]:
         imp = Improvement(
             request_id=str(uuid4()), original_resume_id=original_resume_id,
             tailored_resume_id=tailored_resume_id, job_id=job_id, improvements=improvements,
+            user_id=user_id,
         )
         async with self._session() as session:
             session.add(imp)
@@ -281,10 +301,13 @@ class Database:
             await session.refresh(imp)
             return self._improvement_to_dict(imp)
 
-    async def get_improvement_by_tailored_resume(self, tailored_resume_id: str) -> dict[str, Any] | None:
+    async def get_improvement_by_tailored_resume(self, tailored_resume_id: str, user_id: str) -> dict[str, Any] | None:
         async with self._session() as session:
             result = await session.execute(
-                select(Improvement).where(Improvement.tailored_resume_id == tailored_resume_id)
+                select(Improvement).where(
+                    Improvement.tailored_resume_id == tailored_resume_id,
+                    Improvement.user_id == user_id,
+                )
             )
             row = result.scalar_one_or_none()
             return self._improvement_to_dict(row) if row else None
@@ -471,12 +494,20 @@ class Database:
 
     # -- Stats & admin -------------------------------------------------------
 
-    async def get_stats(self) -> dict[str, Any]:
+    async def get_stats(self, user_id: str) -> dict[str, Any]:
         async with self._session() as session:
-            resume_count = (await session.execute(select(func.count()).select_from(Resume))).scalar() or 0
-            job_count = (await session.execute(select(func.count()).select_from(Job))).scalar() or 0
-            improvement_count = (await session.execute(select(func.count()).select_from(Improvement))).scalar() or 0
-            master = await session.execute(select(Resume).where(Resume.is_master == True))
+            resume_count = (await session.execute(
+                select(func.count()).select_from(Resume).where(Resume.user_id == user_id)
+            )).scalar() or 0
+            job_count = (await session.execute(
+                select(func.count()).select_from(Job).where(Job.user_id == user_id)
+            )).scalar() or 0
+            improvement_count = (await session.execute(
+                select(func.count()).select_from(Improvement).where(Improvement.user_id == user_id)
+            )).scalar() or 0
+            master = await session.execute(
+                select(Resume).where(Resume.is_master == True, Resume.user_id == user_id)
+            )
             return {
                 "total_resumes": resume_count,
                 "total_jobs": job_count,
