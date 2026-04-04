@@ -7,9 +7,20 @@ import { useTranslations } from '@/lib/i18n/translations';
 interface LoginFormProps {
   codeChallenge: string;
   state: string;
+  oauthClientId?: string;
+  oauthRedirectUri?: string;
+  oauthCodeChallengeMethod?: string;
+  oauthScope?: string;
 }
 
-export function LoginForm({ codeChallenge, state }: LoginFormProps) {
+export function LoginForm({
+  codeChallenge,
+  state,
+  oauthClientId,
+  oauthRedirectUri,
+  oauthCodeChallengeMethod,
+  oauthScope,
+}: LoginFormProps) {
   const { t } = useTranslations();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +33,8 @@ export function LoginForm({ codeChallenge, state }: LoginFormProps) {
     setLoading(true);
 
     try {
-      const redirectUri = `${window.location.origin}/callback`;
+      const clientId = oauthClientId || 'resume-matcher-web';
+      const redirectUri = oauthRedirectUri || `${window.location.origin}/callback`;
       const resp = await apiFetch('/oauth/authorize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -30,11 +42,12 @@ export function LoginForm({ codeChallenge, state }: LoginFormProps) {
         body: JSON.stringify({
           email,
           password,
-          client_id: 'resume-matcher-web',
+          client_id: clientId,
           redirect_uri: redirectUri,
           code_challenge: codeChallenge,
-          code_challenge_method: 'S256',
+          code_challenge_method: oauthCodeChallengeMethod || 'S256',
           state,
+          ...(oauthScope ? { scope: oauthScope } : {}),
         }),
         redirect: 'manual',
       });

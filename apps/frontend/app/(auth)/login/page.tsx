@@ -16,6 +16,15 @@ function LoginContent() {
   const [providers, setProviders] = useState<string[]>(['credentials']);
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  // Third-party OAuth flow: detect params from authorize redirect
+  const oauthClientId = params.get('client_id');
+  const oauthRedirectUri = params.get('redirect_uri');
+  const oauthCodeChallenge = params.get('code_challenge');
+  const oauthCodeChallengeMethod = params.get('code_challenge_method') || 'S256';
+  const oauthState = params.get('state');
+  const oauthScope = params.get('scope');
+  const isThirdPartyOAuth = !!(oauthClientId && oauthRedirectUri && oauthCodeChallenge);
+
   const errorParam = params.get('error');
   const errorMessage =
     errorParam === 'account_exists'
@@ -27,9 +36,14 @@ function LoginContent() {
         : null;
 
   useEffect(() => {
-    startLogin()
-      .then(({ codeChallenge, state }) => setPkce({ codeChallenge, state }))
-      .catch(() => setInitFailed(true));
+    if (isThirdPartyOAuth) {
+      // Use OAuth params from URL instead of generating our own PKCE
+      setPkce({ codeChallenge: oauthCodeChallenge!, state: oauthState || '' });
+    } else {
+      startLogin()
+        .then(({ codeChallenge, state }) => setPkce({ codeChallenge, state }))
+        .catch(() => setInitFailed(true));
+    }
 
     apiFetch('/auth/providers')
       .then((r) => r.json())
@@ -106,7 +120,14 @@ function LoginContent() {
           </>
         )}
 
-        <LoginForm codeChallenge={pkce.codeChallenge} state={pkce.state} />
+        <LoginForm
+          codeChallenge={pkce.codeChallenge}
+          state={pkce.state}
+          oauthClientId={isThirdPartyOAuth ? oauthClientId! : undefined}
+          oauthRedirectUri={isThirdPartyOAuth ? oauthRedirectUri! : undefined}
+          oauthCodeChallengeMethod={isThirdPartyOAuth ? oauthCodeChallengeMethod : undefined}
+          oauthScope={isThirdPartyOAuth ? oauthScope || undefined : undefined}
+        />
       </div>
     </div>
   );
