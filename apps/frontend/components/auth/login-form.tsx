@@ -49,20 +49,12 @@ export function LoginForm({
           state,
           ...(oauthScope ? { scope: oauthScope } : {}),
         }),
-        redirect: 'manual',
       });
 
-      if (resp.type === 'opaqueredirect' || resp.status === 303) {
-        const location = resp.headers.get('location');
-        if (location) {
-          window.location.href = location;
-          return;
-        }
-      }
+      const data = await resp.json().catch(() => ({}));
 
-      // If we got a redirect response that fetch followed
-      if (resp.redirected && resp.url) {
-        window.location.href = resp.url;
+      if (resp.ok && data.redirect_url) {
+        window.location.href = data.redirect_url;
         return;
       }
 
@@ -70,7 +62,6 @@ export function LoginForm({
       if (resp.status === 401) {
         setError(t('auth.invalidCredentials'));
       } else {
-        const data = await resp.json().catch(() => ({}));
         setError(data.detail || t('auth.loginFailed'));
       }
     } catch {

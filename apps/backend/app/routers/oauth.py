@@ -1,6 +1,7 @@
 """OAuth 2.1 endpoints: authorize, token, revoke, discovery."""
 
 import hashlib
+import json
 import logging
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -98,12 +99,17 @@ async def authorize(body: AuthorizeRequest) -> Response:
         expires_at=datetime.now(timezone.utc) + timedelta(minutes=AUTHORIZATION_CODE_EXPIRE_MINUTES),
     )
 
-    # Redirect with code
+    # Return redirect URL as JSON so the frontend SPA can navigate.
+    # (fetch with redirect:'manual' can't read Location headers from opaque redirects)
     params: dict[str, str] = {"code": code}
     if body.state:
         params["state"] = body.state
     redirect_url = f"{body.redirect_uri}?{urlencode(params)}"
-    return RedirectResponse(url=redirect_url, status_code=303)
+    return Response(
+        content=json.dumps({"redirect_url": redirect_url}),
+        status_code=200,
+        media_type="application/json",
+    )
 
 
 @router.post("/token", response_model=TokenResponse)
