@@ -90,9 +90,9 @@ async def root() -> dict:
 
 
 @app.get("/.well-known/oauth-authorization-server")
-async def oauth_server_metadata(request: Request) -> dict:
+async def oauth_server_metadata() -> dict:
     """RFC 8414 OAuth 2.1 Authorization Server Metadata."""
-    base = str(request.base_url).rstrip("/")
+    base = settings.frontend_base_url.rstrip("/")
     api_base = f"{base}/api/v1"
     return {
         "issuer": base,
@@ -116,9 +116,9 @@ async def jwks_endpoint() -> dict:
 
 
 @app.get("/.well-known/oauth-protected-resource")
-async def protected_resource_metadata(request: Request) -> dict:
+async def protected_resource_metadata() -> dict:
     """RFC 9728 OAuth 2.0 Protected Resource Metadata."""
-    base = str(request.base_url).rstrip("/")
+    base = settings.frontend_base_url.rstrip("/")
     return {
         "resource": base,
         "authorization_servers": [base],
