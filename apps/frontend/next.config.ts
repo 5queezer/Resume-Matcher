@@ -28,6 +28,27 @@ const nextConfig: NextConfig = {
         source: '/openapi.json',
         destination: `${BACKEND_ORIGIN}/openapi.json`,
       },
+      // MCP + OAuth 2.1 discovery and claude.ai compat proxies
+      {
+        source: '/.well-known/:path*',
+        destination: `${BACKEND_ORIGIN}/.well-known/:path*`,
+      },
+      {
+        source: '/mcp',
+        destination: `${BACKEND_ORIGIN}/mcp`,
+      },
+      {
+        source: '/register',
+        destination: `${BACKEND_ORIGIN}/register`,
+      },
+      {
+        source: '/token',
+        destination: `${BACKEND_ORIGIN}/token`,
+      },
+      {
+        source: '/authorize',
+        destination: `${BACKEND_ORIGIN}/authorize`,
+      },
     ];
   },
 };
