@@ -54,6 +54,16 @@ async def _validate_client(client_id: str, redirect_uri: str) -> None:
         raise HTTPException(status_code=400, detail="Invalid redirect_uri")
 
 
+@router.get("/authorize")
+async def authorize_get(request: Request) -> RedirectResponse:
+    """GET authorize → redirect browser to frontend login with OAuth params."""
+    qs = str(request.query_params)
+    target = f"{settings.frontend_origin.rstrip('/')}/login"
+    if qs:
+        target = f"{target}?{qs}"
+    return RedirectResponse(url=target, status_code=302)
+
+
 @router.post("/authorize")
 async def authorize(body: AuthorizeRequest) -> Response:
     """OAuth 2.1 authorization endpoint with embedded credentials."""
